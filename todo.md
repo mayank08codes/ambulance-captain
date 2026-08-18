@@ -346,6 +346,12 @@
 - [x] Keep animation synchronized with trip progress and stop it on arrival/payment
 - [x] Validate the animated map through the OTP-to-navigation flow
 
+## Preserve previous console structure
+
+- [x] Keep the existing booking, OTP, route, ambulance animation, and payment layout unchanged
+- [x] Change only the patient transfer wording to a clear medical reason
+- [x] Reconfirm fast post-OTP movement and automatic payment remain intact
+
 ## Emergency reason wording
 
 - [x] Replace the generic Patient transfer request title with a clear condition-based emergency reason
