@@ -246,3 +246,11 @@
 - [x] Harden the app entrypoint so sign-in and operations render without a white screen
 - [x] Validate request acceptance, OTP, live navigation, hospital selection, arrival, payment, history, profile, settings, and help flows
 - [x] Validate the complete desktop workflow and save a new checkpoint
+
+## Location-neutral live workflow
+
+- [x] Remove Delhi-specific labels and copy from the driver workflow
+- [x] Replace Delhi-only fallback assumptions with browser GPS and location-neutral fallback wording
+- [x] Keep request, OTP, live hospital routing, arrival, and payment flow usable without a Delhi location
+- [x] Validate and checkpoint the location-neutral workflow
+- [x] Reuse the existing configured Google Maps key without requesting a new key
