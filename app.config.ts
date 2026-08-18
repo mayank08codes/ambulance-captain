@@ -32,7 +32,7 @@ const env = {
   appSlug: "ambulance-captain",
   // S3 URL of the app logo - set this to the URL returned by generate_image when creating custom logo
   // Leave empty to use the default icon from assets/images/icon.png
-  logoUrl: "/manus-storage/rescueroute-red-ambulance-logo_0bc36198.png",
+  logoUrl: "/manus-storage/rescueroute-ambulance-logo_3da843c9.png",
   scheme: schemeFromBundleId,
   iosBundleId: bundleId,
   androidPackage: bundleId,

@@ -175,3 +175,9 @@
 - [x] Update favicon and app configuration logo references
 - [x] Validate red logo contrast and small-size readability
 - [ ] Save a checkpoint for the logo update
+
+## Restore simple ambulance logo
+
+- [x] Restore the previous simple ambulance logo asset in the welcome page and sign-in card
+- [x] Restore the simple logo in navigation branding and app configuration
+- [x] Validate the restored logo and save a checkpoint
