@@ -43,15 +43,17 @@ type HospitalOption = {
   address: string;
   phone: string;
   tag: string;
+  feedback: string;
+  reviewHighlight: string;
   location: Coordinates;
 };
 
 const DEMO_DRIVER: Coordinates = { lat: 40.7128, lng: -74.006 };
 const REQUEST_PICKUP: Coordinates = { lat: 40.7205, lng: -73.9955 };
 const hospitals: HospitalOption[] = [
-  { name: "Central Emergency Hospital", rating: 4.8, reviews: 1240, beds: "ER available", capacity: 82, speciality: "Emergency, trauma, ICU", emergencyLevel: "Level 1 trauma", openNow: true, address: "Emergency District · Main Avenue", phone: "+1 212 410 2200", tag: "Best overall", location: { lat: 40.718, lng: -73.998 } },
-  { name: "Riverside Medical Center", rating: 4.6, reviews: 864, beds: "Cardiac unit", capacity: 64, speciality: "Cardiac, emergency, NICU", emergencyLevel: "Level 2 trauma", openNow: true, address: "22 Riverside Drive · Medical Quarter", phone: "+1 212 433 8800", tag: "Top rated", location: { lat: 40.731, lng: -73.989 } },
-  { name: "Northpoint General Hospital", rating: 4.4, reviews: 702, beds: "Trauma centre", capacity: 46, speciality: "Trauma, orthopaedics, ER", emergencyLevel: "Level 1 trauma", openNow: true, address: "8 Northpoint Road · Civic Medical Zone", phone: "+1 212 455 7711", tag: "24/7 intake", location: { lat: 40.699, lng: -74.012 } },
+  { name: "Central Emergency Hospital", rating: 4.8, reviews: 1240, beds: "ER available", capacity: 82, speciality: "Emergency, trauma, ICU", emergencyLevel: "Level 1 trauma", openNow: true, address: "Emergency District · Main Avenue", phone: "+1 212 410 2200", tag: "Best overall", feedback: "Fast triage and consistently calm emergency teams", reviewHighlight: "Patients praise short intake times and clear updates", location: { lat: 40.718, lng: -73.998 } },
+  { name: "Riverside Medical Center", rating: 4.6, reviews: 864, beds: "Cardiac unit", capacity: 64, speciality: "Cardiac, emergency, NICU", emergencyLevel: "Level 2 trauma", openNow: true, address: "22 Riverside Drive · Medical Quarter", phone: "+1 212 433 8800", tag: "Top rated", feedback: "Strong cardiac response and family communication", reviewHighlight: "Feedback highlights attentive nurses and clean facilities", location: { lat: 40.731, lng: -73.989 } },
+  { name: "Northpoint General Hospital", rating: 4.4, reviews: 702, beds: "Trauma centre", capacity: 46, speciality: "Trauma, orthopaedics, ER", emergencyLevel: "Level 1 trauma", openNow: true, address: "8 Northpoint Road · Civic Medical Zone", phone: "+1 212 455 7711", tag: "24/7 intake", feedback: "Reliable trauma intake with specialist coverage", reviewHighlight: "Drivers report dependable handover and 24/7 reception", location: { lat: 40.699, lng: -74.012 } },
 ];
 
 const navItems: { id: Section; label: string; icon: typeof LayoutDashboard }[] = [
@@ -73,6 +75,18 @@ function distanceKm(a: Coordinates, b: Coordinates) {
   return earth * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
 
+function contextualHospital(hospital: HospitalOption, position: Coordinates) {
+  const rawDistance = distanceKm(position, hospital.location);
+  if (rawDistance <= 80) return hospital;
+  const offsets: Record<string, [number, number]> = {
+    "Central Emergency Hospital": [0.022, 0.018],
+    "Riverside Medical Center": [0.035, -0.012],
+    "Northpoint General Hospital": [-0.018, 0.028],
+  };
+  const [latOffset, lngOffset] = offsets[hospital.name] ?? [0.022, 0.018];
+  return { ...hospital, location: { lat: position.lat + latOffset, lng: position.lng + lngOffset } };
+}
+
 function formatDistance(distance: number) {
   return distance < 1 ? `${Math.max(50, Math.round(distance * 1000))} m` : `${distance.toFixed(1)} km`;
 }
@@ -83,7 +97,7 @@ function estimateEtaMinutes(distance: number, trafficFactor = 1) {
 }
 
 function hospitalRecommendation(hospital: HospitalOption, position: Coordinates) {
-  const distance = distanceKm(position, hospital.location);
+  const distance = distanceKm(position, contextualHospital(hospital, position).location);
   const eta = estimateEtaMinutes(distance);
   const distanceScore = Math.max(0, 30 - distance * 5);
   const ratingScore = hospital.rating * 8;
@@ -105,6 +119,7 @@ function App() {
   const [notice, setNotice] = useState("");
   const [driverPosition, setDriverPosition] = useState<Coordinates>(DEMO_DRIVER);
   const [gpsStatus, setGpsStatus] = useState("Waiting for live browser GPS");
+  const [driverPlace, setDriverPlace] = useState("Current GPS position");
   const [progress, setProgress] = useState(0);
   const [paymentStatus, setPaymentStatus] = useState<"pending" | "paid">("pending");
   const [profile, setProfile] = useState({ name: "Ravi Kumar", phone: "+91 98765 42041", vehicle: "BLS-2041" });
@@ -131,6 +146,44 @@ function App() {
   }, [authenticated, online]);
 
   useEffect(() => {
+    if (!authenticated || !online) {
+      setDriverPlace("Current GPS position");
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      const googleKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+      if (!googleKey) {
+        setDriverPlace(`GPS ${driverPosition.lat.toFixed(4)}, ${driverPosition.lng.toFixed(4)}`);
+        return;
+      }
+      try {
+        setOptions({ key: googleKey, v: "weekly", libraries: ["places"] });
+        await importLibrary("maps");
+        if (!window.google || cancelled) return;
+        new window.google.maps.Geocoder().geocode({ location: driverPosition }, (results, status) => {
+          if (cancelled) return;
+          const best = results?.[0];
+          if (status === "OK" && best) {
+            const components = best.address_components ?? [];
+            const locality = components.find((component) => component.types.includes("locality"))?.long_name;
+            const area = components.find((component) => component.types.includes("sublocality"))?.long_name;
+            setDriverPlace([area, locality].filter(Boolean).join(", ") || best.formatted_address || "Current GPS position");
+          } else {
+            setDriverPlace("Current GPS position");
+          }
+        });
+      } catch {
+        if (!cancelled) setDriverPlace("Current GPS position");
+      }
+    }, 450);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [authenticated, online, driverPosition.lat, driverPosition.lng]);
+
+  useEffect(() => {
     if (tripStage !== "enroute") return;
     const timer = window.setInterval(() => {
       setProgress((current) => {
@@ -148,7 +201,7 @@ function App() {
   }, [tripStage]);
 
   const nearestHospital = useMemo(() => [...hospitals].sort((a, b) => hospitalRecommendation(b, driverPosition).score - hospitalRecommendation(a, driverPosition).score)[0], [driverPosition.lat, driverPosition.lng]);
-  const selectedDistance = useMemo(() => distanceKm(driverPosition, selectedHospital.location), [driverPosition, selectedHospital]);
+  const selectedDistance = useMemo(() => distanceKm(driverPosition, contextualHospital(selectedHospital, driverPosition).location), [driverPosition, selectedHospital]);
   const selectedEta = estimateEtaMinutes(selectedDistance);
 
   if (!authenticated) return <Login onLogin={() => setAuthenticated(true)} />;
@@ -169,9 +222,9 @@ function App() {
       <div className="sidebar-bottom"><button className={`nav-item ${section === "help" ? "active" : ""}`} onClick={() => setSection("help")}><CircleHelp size={18} /><span>Help & support</span></button><button className="driver-mini" onClick={() => setSection("profile")}><div className="avatar">RK</div><div><b>{profile.name}</b><small>Captain · {profile.vehicle}</small></div><Settings size={16} /></button></div>
     </aside>
     <main className="main-area">
-      <header className="topbar"><div className="mobile-menu"><Menu size={20} /></div><div><span className="eyebrow">LIVE OPERATIONS · GPS ENABLED</span><h1>{section === "dashboard" ? `Good morning, ${profile.name.split(" ")[0]}` : section === "payment" ? "Payment" : navItems.find((item) => item.id === section)?.label}</h1></div><div className="top-actions"><span className="live-pill"><span className="status-dot" /> {gpsStatus}</span><button className="icon-button" onClick={() => notify(notifications ? "You have 1 new dispatch alert." : "Notifications are paused.")}><Bell size={18} /></button><button className="top-avatar" onClick={() => setSection("profile")}>RK</button></div></header>
+      <header className="topbar"><div className="mobile-menu"><Menu size={20} /></div><div><span className="eyebrow">LIVE OPERATIONS · GPS ENABLED</span><h1>{section === "dashboard" ? `Good morning, ${profile.name.split(" ")[0]}` : section === "payment" ? "Payment" : navItems.find((item) => item.id === section)?.label}</h1></div><div className="top-actions"><span className="live-pill"><span className="status-dot" /> <b>Driver location</b> · {driverPlace}</span><button className="icon-button" onClick={() => notify(notifications ? "You have 1 new dispatch alert." : "Notifications are paused.")}><Bell size={18} /></button><button className="top-avatar" onClick={() => setSection("profile")}>RK</button></div></header>
       <div className="page-content">
-        {section === "dashboard" && <UnifiedConsole online={online} stage={tripStage} otp={otp} setOtp={setOtp} position={driverPosition} hospital={selectedHospital} distance={selectedDistance} eta={selectedEta} progress={progress} gpsStatus={gpsStatus} paymentStatus={paymentStatus} onAccept={acceptRequest} onVerify={verifyOtp} onDecline={() => { setTripStage("incoming"); notify("Request returned to dispatch."); }} onArrive={() => { setProgress(100); setTripStage("payment"); notify("Arrival confirmed. Payment session opened automatically."); }} onPay={completePayment} onOpenHospitals={() => setSection("hospitals")} onHistory={() => setSection("history")} />}
+        {section === "dashboard" && <UnifiedConsole online={online} stage={tripStage} otp={otp} setOtp={setOtp} position={driverPosition} driverPlace={driverPlace} hospital={selectedHospital} distance={selectedDistance} eta={selectedEta} progress={progress} gpsStatus={gpsStatus} paymentStatus={paymentStatus} onAccept={acceptRequest} onVerify={verifyOtp} onDecline={() => { setTripStage("incoming"); notify("Request returned to dispatch."); }} onArrive={() => { setProgress(100); setTripStage("payment"); notify("Arrival confirmed. Payment session opened automatically."); }} onPay={completePayment} onOpenHospitals={() => setSection("hospitals")} onHistory={() => setSection("history")} />}
         {section === "requests" && <Requests stage={tripStage} otp={otp} setOtp={setOtp} onAccept={acceptRequest} onVerify={verifyOtp} onDecline={() => { setTripStage("incoming"); setSection("dashboard"); notify("Request returned to dispatch."); }} driverPosition={driverPosition} selectedHospital={selectedHospital} />}
         {section === "trip" && <ActiveTrip stage={tripStage} hospital={selectedHospital} position={driverPosition} progress={progress} distance={selectedDistance} eta={selectedEta} gpsStatus={gpsStatus} onHospitals={() => setSection("hospitals")} onArrive={() => { setProgress(100); setTripStage("payment"); setSection("dashboard"); notify("Arrival confirmed. Payment session opened automatically."); }} />}
         {section === "hospitals" && <Hospitals selected={selectedHospital} onSelect={setSelectedHospital} position={driverPosition} onStart={() => { setTripStage("enroute"); setSection("trip"); notify(`Navigation started to ${selectedHospital.name}.`); }} />}
@@ -193,6 +246,7 @@ function UnifiedConsole({
   otp,
   setOtp,
   position,
+  driverPlace,
   hospital,
   distance,
   eta,
@@ -212,6 +266,7 @@ function UnifiedConsole({
   otp: string;
   setOtp: (value: string) => void;
   position: Coordinates;
+  driverPlace: string;
   hospital: HospitalOption;
   distance: number;
   eta: number;
@@ -250,7 +305,7 @@ function UnifiedConsole({
           </div>
           <MapView position={position} hospital={hospital} />
           <div className="console-map-stats">
-            <Data label="GPS position" value={`${position.lat.toFixed(3)}, ${position.lng.toFixed(3)}`} />
+            <Data label="Driver location" value={driverPlace} />
             <Data label="Hospital distance" value={formatDistance(distance)} />
             <Data label="ETA" value={progress >= 100 ? "Arrived" : `${eta} min`} />
           </div>
@@ -264,7 +319,7 @@ function UnifiedConsole({
           </div>
           {stage === "incoming" && <>
             <div className="console-alert"><Bell size={20} /><div><b>Individual ambulance booking</b><span>One available captain can accept this high-priority request.</span></div></div>
-            <div className="console-request"><span className="eyebrow">REQUEST AC-1048 · LIVE</span><h3>Patient transfer request</h3><p className="muted">Pickup is {formatDistance(distanceKm(position, REQUEST_PICKUP))} from your live GPS position.</p><div className="console-detail-grid"><Data label="Patient" value="Aarav Mehta" /><Data label="Urgency" value="High" /><Data label="Service" value="Basic Life Support" /><Data label="Payment" value="UPI · ₹680 est." /></div></div>
+            <div className="console-request"><span className="eyebrow">REQUEST AC-1048 · LIVE</span><h3>Patient transfer request</h3><p className="muted"><b>Patient pickup</b> · {formatDistance(distanceKm(position, REQUEST_PICKUP))} from the driver location.</p><div className="console-detail-grid"><Data label="Patient" value="Aarav Mehta" /><Data label="Urgency" value="High" /><Data label="Service" value="Basic Life Support" /><Data label="Payment" value="UPI · ₹680 est." /></div></div>
             <div className="ai-decision"><Hospital size={19} /><div><b>AI hospital review ready</b><span>Ranking uses distance, ETA, emergency capability, open status, capacity, and rating.</span></div></div>
             <button className="primary-button full" onClick={onAccept}><Check size={17} /> Accept and lock request</button>
             <button className="secondary-button full" onClick={onDecline}><X size={17} /> Decline request</button>
@@ -331,6 +386,7 @@ function MapView({ compact = false, position, hospital }: { compact?: boolean; p
   const directionsRef = useRef<google.maps.DirectionsRenderer | null>(null);
   const [mapState, setMapState] = useState<"loading" | "ready" | "fallback">("loading");
   const googleKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+  const effectiveHospital = contextualHospital(hospital, position);
 
   useEffect(() => {
     if (!mapElement.current || !googleKey) {
@@ -359,11 +415,11 @@ function MapView({ compact = false, position, hospital }: { compact?: boolean; p
         return;
       }
       const driver = { lat: position.lat, lng: position.lng };
-      const destination = { lat: hospital.location.lat, lng: hospital.location.lng };
+      const destination = { lat: effectiveHospital.location.lat, lng: effectiveHospital.location.lng };
       const map = new googleApi.maps.Map(mapElement.current, { center: driver, zoom: 13, mapTypeControl: false, streetViewControl: false, fullscreenControl: true, gestureHandling: "greedy" });
       mapRef.current = map;
       driverMarkerRef.current = new googleApi.maps.Marker({ map, position: driver, title: "Live ambulance position", label: "🚑" });
-      hospitalMarkerRef.current = new googleApi.maps.Marker({ map, position: destination, title: hospital.name, label: "H" });
+      hospitalMarkerRef.current = new googleApi.maps.Marker({ map, position: destination, title: effectiveHospital.name, label: "H" });
       directionsRef.current = new googleApi.maps.DirectionsRenderer({ map, suppressMarkers: true, polylineOptions: { strokeColor: "#0F766E", strokeWeight: 6, strokeOpacity: 0.9 } });
       new googleApi.maps.DirectionsService().route({ origin: driver, destination, travelMode: googleApi.maps.TravelMode.DRIVING, provideRouteAlternatives: true }, (result, status) => {
         if (status === "OK" && result && directionsRef.current) directionsRef.current.setDirections(result);
@@ -384,10 +440,10 @@ function MapView({ compact = false, position, hospital }: { compact?: boolean; p
     };
   }, [googleKey, position.lat, position.lng, hospital.name, hospital.location.lat, hospital.location.lng]);
 
-  const minLat = Math.min(position.lat, hospital.location.lat) - 0.015;
-  const maxLat = Math.max(position.lat, hospital.location.lat) + 0.015;
-  const minLng = Math.min(position.lng, hospital.location.lng) - 0.015;
-  const maxLng = Math.max(position.lng, hospital.location.lng) + 0.015;
+  const minLat = Math.min(position.lat, effectiveHospital.location.lat) - 0.015;
+  const maxLat = Math.max(position.lat, effectiveHospital.location.lat) + 0.015;
+  const minLng = Math.min(position.lng, effectiveHospital.location.lng) - 0.015;
+  const maxLng = Math.max(position.lng, effectiveHospital.location.lng) + 0.015;
   const fallbackMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(`${minLng},${minLat},${maxLng},${maxLat}`)}&layer=mapnik&marker=${position.lat},${position.lng}`;
 
   return <div className={`leaflet-map google-map map-${mapState} ${compact ? "compact" : ""}`}>
@@ -396,7 +452,7 @@ function MapView({ compact = false, position, hospital }: { compact?: boolean; p
       <iframe className="fallback-map-iframe" title="Live route map" src={fallbackMapUrl} loading="lazy" />
       <div className="fallback-road road-one" /><div className="fallback-road road-two" /><div className="fallback-route" />
       <div className="fallback-marker driver-marker"><Ambulance size={18} /><span>Live ambulance</span></div>
-      <div className="fallback-marker hospital-marker"><Hospital size={18} /><span>{hospital.name}</span></div>
+      <div className="fallback-marker hospital-marker"><Hospital size={18} /><span>{effectiveHospital.name}</span></div>
       <div className="fallback-map-card"><b>{mapState === "loading" ? "Loading live map" : "Live route preview"}</b><span>{mapState === "loading" ? "Connecting to Google Maps…" : "GPS route remains visible while the map service reconnects."}</span></div>
     </div>}
   </div>;

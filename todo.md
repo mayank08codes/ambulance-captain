@@ -292,3 +292,25 @@
 - [x] Add a clear AI-assisted hospital decision panel with explainable reasons and confidence context
 - [x] Make the map and route update inline immediately after valid OTP verification
 - [x] Validate the complete one-page workflow and preserve secondary pages only for history/profile/settings
+
+## Nearby hospital intelligence correction
+
+- [ ] Audit why the active hospital distance can show 11,763 km instead of a nearby demo distance
+- [ ] Correct the demo driver and hospital coordinates so the recommended hospital is approximately 3–4 km away when GPS is unavailable
+- [ ] Keep distance and travel-time calculations consistent and visibly explain their source
+- [ ] Add AI-assisted hospital comparison for rating, review feedback, emergency capability, capacity, and care details
+- [ ] Validate the recommendation, metrics, and one-page booking workflow
+
+## Automatic Google live location and place names
+
+- [ ] Reuse the existing Google Maps key without requesting it again
+- [ ] Track the captain’s live browser GPS position while authenticated and online
+- [ ] Reverse-geocode the current position into a readable place name
+- [ ] Show named pickup, captain, route, and hospital locations in the unified console
+- [ ] Validate live updates and a graceful fallback when Google services are unavailable
+
+## Driver location clarity
+
+- [x] Display the fetched current GPS place under the exact label “Driver location”
+- [x] Keep patient pickup as a separate named destination
+- [x] Ensure topbar, map panel, request card, and route panel never call the driver location patient location
