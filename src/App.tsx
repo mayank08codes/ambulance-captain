@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import "leaflet/dist/leaflet.css";
-import L from "leaflet";
+import { importLibrary, setOptions } from "@googlemaps/js-api-loader";
 import {
   Activity,
   Ambulance,
@@ -28,7 +27,7 @@ import {
   X,
 } from "lucide-react";
 
-type Section = "dashboard" | "requests" | "trip" | "hospitals" | "history" | "profile" | "payment";
+type Section = "dashboard" | "requests" | "trip" | "hospitals" | "history" | "profile" | "payment" | "earnings" | "settings" | "help";
 type TripStage = "incoming" | "otp" | "enroute" | "arrived" | "payment" | "completed";
 type Coordinates = { lat: number; lng: number };
 
@@ -37,6 +36,12 @@ type HospitalOption = {
   rating: number;
   reviews: number;
   beds: string;
+  capacity: number;
+  speciality: string;
+  emergencyLevel: string;
+  openNow: boolean;
+  address: string;
+  phone: string;
   tag: string;
   location: Coordinates;
 };
@@ -44,9 +49,9 @@ type HospitalOption = {
 const DELHI_DRIVER: Coordinates = { lat: 28.6139, lng: 77.209 };
 const DELHI_PICKUP: Coordinates = { lat: 28.6315, lng: 77.2167 };
 const hospitals: HospitalOption[] = [
-  { name: "CityCare Emergency Centre", rating: 4.8, reviews: 1240, beds: "ER available", tag: "Best route", location: { lat: 28.628, lng: 77.218 } },
-  { name: "St. Mary's Multispeciality", rating: 4.6, reviews: 864, beds: "Cardiac unit", tag: "Top rated", location: { lat: 28.642, lng: 77.221 } },
-  { name: "Northside General Hospital", rating: 4.4, reviews: 702, beds: "Trauma centre", tag: "24/7 intake", location: { lat: 28.595, lng: 77.205 } },
+  { name: "CityCare Emergency Centre", rating: 4.8, reviews: 1240, beds: "ER available", capacity: 82, speciality: "Emergency, trauma, ICU", emergencyLevel: "Level 1 trauma", openNow: true, address: "14 Barakhamba Road, Connaught Place, New Delhi", phone: "+91 11 4100 2200", tag: "Best overall", location: { lat: 28.628, lng: 77.218 } },
+  { name: "St. Mary's Multispeciality", rating: 4.6, reviews: 864, beds: "Cardiac unit", capacity: 64, speciality: "Cardiac, emergency, NICU", emergencyLevel: "Level 2 trauma", openNow: true, address: "22 Pusa Road, Central Delhi", phone: "+91 11 4333 8800", tag: "Top rated", location: { lat: 28.642, lng: 77.221 } },
+  { name: "Northside General Hospital", rating: 4.4, reviews: 702, beds: "Trauma centre", capacity: 46, speciality: "Trauma, orthopaedics, ER", emergencyLevel: "Level 1 trauma", openNow: true, address: "8 Ring Road, Civil Lines, New Delhi", phone: "+91 11 4555 7711", tag: "24/7 intake", location: { lat: 28.595, lng: 77.205 } },
 ];
 
 const navItems: { id: Section; label: string; icon: typeof LayoutDashboard }[] = [
@@ -56,6 +61,8 @@ const navItems: { id: Section; label: string; icon: typeof LayoutDashboard }[] =
   { id: "hospitals", label: "Hospitals & routes", icon: Hospital },
   { id: "history", label: "Trip history", icon: Clock3 },
   { id: "profile", label: "Driver profile", icon: UserRound },
+  { id: "earnings", label: "Earnings", icon: Wallet },
+  { id: "settings", label: "Settings", icon: Settings },
 ];
 
 function distanceKm(a: Coordinates, b: Coordinates) {
@@ -66,7 +73,21 @@ function distanceKm(a: Coordinates, b: Coordinates) {
   return earth * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
 
+function hospitalRecommendation(hospital: HospitalOption, position: Coordinates) {
+  const distance = distanceKm(position, hospital.location);
+  const eta = Math.max(3, Math.round(distance * 4.2));
+  const distanceScore = Math.max(0, 30 - distance * 5);
+  const ratingScore = hospital.rating * 8;
+  const reviewScore = Math.min(10, Math.log10(hospital.reviews) * 3);
+  const capacityScore = hospital.capacity * 0.12;
+  const emergencyScore = hospital.emergencyLevel.includes("Level 1") ? 12 : 7;
+  const openScore = hospital.openNow ? 10 : -30;
+  const score = distanceScore + ratingScore + reviewScore + capacityScore + emergencyScore + openScore;
+  return { distance, eta, score };
+}
+
 function App() {
+  const [authenticated, setAuthenticated] = useState(false);
   const [section, setSection] = useState<Section>("dashboard");
   const [tripStage, setTripStage] = useState<TripStage>("incoming");
   const [online, setOnline] = useState(true);
@@ -80,6 +101,8 @@ function App() {
   const [profile, setProfile] = useState({ name: "Ravi Kumar", phone: "+91 98765 42041", vehicle: "BLS-2041" });
   const [editingProfile, setEditingProfile] = useState(false);
   const [notifications, setNotifications] = useState(true);
+
+  if (!authenticated) return <Login onLogin={() => setAuthenticated(true)} />;
 
   const notify = (message: string) => {
     setNotice(message);
@@ -133,7 +156,7 @@ function App() {
       <div className="brand"><div className="brand-mark"><Ambulance size={22} /></div><div><strong>Ambulance Captain</strong><span>Delhi driver operations</span></div></div>
       <div className="online-card"><span className="status-dot" /><div><b>{online ? "You are online" : "You are offline"}</b><small>{online ? "Receiving Delhi requests" : "Go online to receive requests"}</small></div><button className={`switch ${online ? "on" : ""}`} onClick={() => setOnline(!online)} aria-label="Toggle availability"><span /></button></div>
       <nav className="nav-list">{navItems.map(({ id, label, icon: Icon }) => <button key={id} className={`nav-item ${section === id ? "active" : ""}`} onClick={() => setSection(id)}><Icon size={18} /><span>{label}</span>{id === "requests" && online && <em>1</em>}</button>)}</nav>
-      <div className="sidebar-bottom"><button className="nav-item" onClick={openHelp}><CircleHelp size={18} /><span>Help & support</span></button><button className="driver-mini" onClick={() => setSection("profile")}><div className="avatar">RK</div><div><b>{profile.name}</b><small>Captain · {profile.vehicle}</small></div><Settings size={16} /></button></div>
+      <div className="sidebar-bottom"><button className={`nav-item ${section === "help" ? "active" : ""}`} onClick={() => setSection("help")}><CircleHelp size={18} /><span>Help & support</span></button><button className="driver-mini" onClick={() => setSection("profile")}><div className="avatar">RK</div><div><b>{profile.name}</b><small>Captain · {profile.vehicle}</small></div><Settings size={16} /></button></div>
     </aside>
     <main className="main-area">
       <header className="topbar"><div className="mobile-menu"><Menu size={20} /></div><div><span className="eyebrow">DELHI · LIVE OPERATIONS</span><h1>{section === "dashboard" ? `Good morning, ${profile.name.split(" ")[0]}` : section === "payment" ? "Payment" : navItems.find((item) => item.id === section)?.label}</h1></div><div className="top-actions"><span className="live-pill"><span className="status-dot" /> {gpsStatus}</span><button className="icon-button" onClick={() => notify(notifications ? "You have 1 new dispatch alert." : "Notifications are paused.")}><Bell size={18} /></button><button className="top-avatar" onClick={() => setSection("profile")}>RK</button></div></header>
@@ -144,6 +167,9 @@ function App() {
         {section === "hospitals" && <Hospitals selected={selectedHospital} onSelect={setSelectedHospital} position={driverPosition} onStart={() => { setTripStage("enroute"); setSection("trip"); notify(`Navigation started to ${selectedHospital.name}.`); }} />}
         {section === "history" && <History paymentStatus={paymentStatus} />}
         {section === "profile" && <Profile profile={profile} setProfile={setProfile} online={online} onToggle={() => setOnline(!online)} editing={editingProfile} setEditing={setEditingProfile} notifications={notifications} setNotifications={setNotifications} notify={notify} />}
+        {section === "earnings" && <Earnings onHistory={() => setSection("history")} notify={notify} />}
+        {section === "settings" && <SettingsPage online={online} notifications={notifications} setNotifications={setNotifications} onToggle={() => setOnline(!online)} onLogout={() => setAuthenticated(false)} notify={notify} />}
+        {section === "help" && <HelpPage notify={notify} />}
         {section === "payment" && <Payment hospital={selectedHospital} status={paymentStatus} onPay={completePayment} onBack={() => setSection("trip")} />}
       </div>
     </main>
@@ -165,7 +191,9 @@ function ActiveTrip({ stage, hospital, position, progress, distance, eta, gpsSta
 }
 
 function Hospitals({ selected, onSelect, position, onStart }: { selected: HospitalOption; onSelect: (hospital: HospitalOption) => void; position: Coordinates; onStart: () => void }) {
-  return <><div className="page-heading"><div><span className="eyebrow">DELHI ROUTE PLANNER</span><h2>Nearby emergency hospitals</h2><p className="muted">Distance and ETA are calculated from the current driver position.</p></div><button className="primary-button" onClick={onStart}><Navigation size={17} /> Start navigation</button></div><div className="hospital-layout"><section className="panel hospital-list">{hospitals.map((hospital) => { const km = distanceKm(position, hospital.location); return <button key={hospital.name} className={`hospital-row ${selected.name === hospital.name ? "selected" : ""}`} onClick={() => onSelect(hospital)}><div className="hospital-icon"><Hospital size={20} /></div><div className="hospital-main"><div className="hospital-name"><b>{hospital.name}</b><span className="tag">{hospital.tag}</span></div><span className="muted">{hospital.beds} · {hospital.reviews.toLocaleString()} reviews</span><div className="hospital-meta"><span className="rating"><Star size={14} fill="currentColor" /> {hospital.rating}</span><span>{km.toFixed(1)} km</span><strong>{Math.max(3, Math.round(km * 4.2))} min</strong></div></div><ChevronRight size={18} /></button>; })}</section><section className="panel route-panel"><PanelHeading title="Route comparison" action="Updated now" /><MapView position={position} hospital={selected} /><div className="route-option selected"><div><b>Recommended route</b><span>Central Delhi corridor · calculated from GPS</span></div><strong>{Math.max(3, Math.round(distanceKm(position, selected.location) * 4.2))} min</strong></div><div className="route-option"><div><b>Alternative route</b><span>Ring Road · traffic fallback</span></div><strong>{Math.max(5, Math.round(distanceKm(position, selected.location) * 5.2))} min</strong></div></section></div></>;
+  const rankedHospitals = [...hospitals].sort((a, b) => hospitalRecommendation(b, position).score - hospitalRecommendation(a, position).score);
+  const selectedMetrics = hospitalRecommendation(selected, position);
+  return <><div className="page-heading"><div><span className="eyebrow">DELHI ROUTE PLANNER</span><h2>Nearest suitable hospitals</h2><p className="muted">Recommendations update from the driver’s current GPS position and balance ETA, emergency capability, capacity, rating, and open status.</p></div><button className="primary-button" onClick={onStart}><Navigation size={17} /> Start navigation to selected</button></div><div className="hospital-layout"><section className="panel hospital-list"><PanelHeading title="Ranked recommendations" action={`${rankedHospitals.length} hospitals`} />{rankedHospitals.map((hospital, index) => { const metrics = hospitalRecommendation(hospital, position); return <button key={hospital.name} className={`hospital-row ${selected.name === hospital.name ? "selected" : ""}`} onClick={() => onSelect(hospital)}><div className="rank-badge">{index + 1}</div><div className="hospital-icon"><Hospital size={20} /></div><div className="hospital-main"><div className="hospital-name"><b>{hospital.name}</b><span className="tag">{index === 0 ? "Recommended" : hospital.tag}</span></div><span className="muted">{hospital.speciality} · {hospital.capacity}% emergency capacity</span><div className="hospital-meta"><span className="rating"><Star size={14} fill="currentColor" /> {hospital.rating} ({hospital.reviews.toLocaleString()})</span><span>{metrics.distance.toFixed(1)} km</span><strong>{metrics.eta} min</strong></div></div><ChevronRight size={18} /></button>; })}</section><section className="panel route-panel"><PanelHeading title="Hospital details & route" action={selected.openNow ? "Open now" : "Closed"} /><MapView position={position} hospital={selected} /><div className="hospital-detail-head"><div className="hospital-icon large"><Hospital size={24} /></div><div><h3>{selected.name}</h3><span className="muted">{selected.address}</span></div></div><div className="hospital-detail-grid"><Data label="Distance" value={`${selectedMetrics.distance.toFixed(1)} km`} /><Data label="ETA" value={`${selectedMetrics.eta} min`} /><Data label="Rating" value={`${selected.rating} / 5`} /><Data label="Capacity" value={`${selected.capacity}%`} /></div><div className="hospital-detail-copy"><b>{selected.emergencyLevel} · {selected.speciality}</b><span>{selected.beds}. Emergency intake is currently {selected.openNow ? "open" : "unavailable"}.</span><span>{selected.phone}</span></div><div className="route-option selected"><div><b>Recommended route</b><span>Fastest available corridor from live driver location</span></div><strong>{selectedMetrics.eta} min</strong></div><div className="route-option"><div><b>Alternative route</b><span>Ring Road fallback · longer distance</span></div><strong>{Math.max(5, Math.round(selectedMetrics.distance * 5.2))} min</strong></div><button className="primary-button full" onClick={onStart}><Navigation size={17} /> Navigate to {selected.name}</button></section></div></>;
 }
 
 function Payment({ hospital, status, onPay, onBack }: { hospital: HospitalOption; status: "pending" | "paid"; onPay: () => void; onBack: () => void }) { return <div className="payment-layout"><section className="panel payment-card"><div className="panel-icon teal"><CreditCard size={22} /></div><span className="eyebrow">TRIP AC-1048 · AUTOMATIC PAYMENT SESSION</span><h2>{status === "paid" ? "Payment completed" : "Collect trip payment"}</h2><p className="muted">Arrival at {hospital.name} was detected. Review the fare and close the trip.</p><div className="fare-total"><span>Total fare</span><strong>₹680</strong></div><div className="fare-lines"><Data label="Base trip" value="₹520" /><Data label="Emergency service" value="₹100" /><Data label="Platform fee" value="₹60" /><Data label="Method" value="UPI" /></div>{status === "pending" ? <button className="primary-button full" onClick={onPay}><Check size={17} /> Confirm payment received</button> : <div className="paid-banner"><Check size={18} /> Payment marked paid and trip closed.</div>}<button className="secondary-button full" onClick={onBack}>Back to active trip</button></section></div>; }
@@ -174,10 +202,86 @@ function History({ paymentStatus }: { paymentStatus: "pending" | "paid" }) { ret
 
 function Profile({ profile, setProfile, online, onToggle, editing, setEditing, notifications, setNotifications, notify }: { profile: { name: string; phone: string; vehicle: string }; setProfile: (value: { name: string; phone: string; vehicle: string }) => void; online: boolean; onToggle: () => void; editing: boolean; setEditing: (value: boolean) => void; notifications: boolean; setNotifications: (value: boolean) => void; notify: (message: string) => void }) { const [draft, setDraft] = useState(profile); return <div className="profile-grid"><section className="panel profile-card"><div className="profile-avatar">RK</div>{editing ? <><label className="field-label">Driver name</label><input className="text-field" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /><label className="field-label">Phone</label><input className="text-field" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} /><label className="field-label">Vehicle ID</label><input className="text-field" value={draft.vehicle} onChange={(e) => setDraft({ ...draft, vehicle: e.target.value })} /><button className="primary-button full" onClick={() => { setProfile(draft); setEditing(false); notify("Driver profile saved."); }}><Check size={16} /> Save profile</button></> : <><h2>{profile.name}</h2><p className="muted">Ambulance Captain · Delhi</p><div className="profile-rating"><Star size={18} fill="currentColor" /> 4.9 <span>128 ratings</span></div><button className="secondary-button full" onClick={() => { setDraft(profile); setEditing(true); }}><Settings size={16} /> Edit profile</button></>}</section><section className="panel settings-card"><PanelHeading title="Driver settings" action="Saved" /><SettingRow icon={Activity} title="Availability" detail={online ? "Online and receiving requests" : "Offline"} action={<button className={`switch ${online ? "on" : ""}`} onClick={onToggle}><span /></button>} /><SettingRow icon={ShieldCheck} title="Documents & verification" detail="All documents are current" action={<BadgeCheck size={18} color="#0F766E" />} /><SettingRow icon={Wallet} title="Payout account" detail="HDFC Bank · ending 2041" action={<button className="icon-button" onClick={() => notify("Payout account settings opened.")}><ChevronRight size={18} /></button>} /><SettingRow icon={Bell} title="Notifications" detail={notifications ? "Request alerts enabled" : "Request alerts paused"} action={<button className={`switch ${notifications ? "on" : ""}`} onClick={() => setNotifications(!notifications)}><span /></button>} /></section></div>; }
 
-function MapView({ compact = false, position, hospital }: { compact?: boolean; position: Coordinates; hospital: HospitalOption }) { const mapElement = useRef<HTMLDivElement>(null); const map = useRef<L.Map | null>(null); const markers = useRef<L.LayerGroup | null>(null); useEffect(() => { if (!mapElement.current || map.current) return; map.current = L.map(mapElement.current, { zoomControl: true }).setView([position.lat, position.lng], 13); L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OpenStreetMap contributors", maxZoom: 19 }).addTo(map.current); markers.current = L.layerGroup().addTo(map.current); return () => { map.current?.remove(); map.current = null; }; }, [position.lat, position.lng]); useEffect(() => { if (!map.current || !markers.current) return; markers.current.clearLayers(); const driverIcon = L.divIcon({ className: "leaflet-driver-marker", html: "<span>🚑</span>", iconSize: [32, 32], iconAnchor: [16, 16] }); const hospitalIcon = L.divIcon({ className: "leaflet-hospital-marker", html: "<span>+</span>", iconSize: [30, 30], iconAnchor: [15, 15] }); L.marker([position.lat, position.lng], { icon: driverIcon }).bindTooltip("Ambulance position", { direction: "top" }).addTo(markers.current); L.marker([hospital.location.lat, hospital.location.lng], { icon: hospitalIcon }).bindTooltip(hospital.name, { direction: "top" }).addTo(markers.current); L.polyline([[position.lat, position.lng], [hospital.location.lat, hospital.location.lng]], { color: "#0f766e", weight: 5, opacity: 0.9 }).addTo(markers.current); map.current.fitBounds([[position.lat, position.lng], [hospital.location.lat, hospital.location.lng]], { padding: [20, 20] }); }, [position, hospital]); return <div className={`leaflet-map ${compact ? "compact" : ""}`} ref={mapElement} />; }
+function MapView({ compact = false, position, hospital }: { compact?: boolean; position: Coordinates; hospital: HospitalOption }) {
+  const mapElement = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const driverMarkerRef = useRef<google.maps.Marker | null>(null);
+  const hospitalMarkerRef = useRef<google.maps.Marker | null>(null);
+  const directionsRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  const googleKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+
+  useEffect(() => {
+    if (!mapElement.current || !googleKey) return;
+    let disposed = false;
+    setOptions({ key: googleKey, v: "weekly", libraries: ["places"] });
+    Promise.all([importLibrary("maps"), importLibrary("routes"), importLibrary("places")]).then(() => {
+      if (disposed || !mapElement.current) return;
+      const googleApi = window.google;
+      if (!googleApi) return;
+      const driver = { lat: position.lat, lng: position.lng };
+      const destination = { lat: hospital.location.lat, lng: hospital.location.lng };
+      const map = new googleApi.maps.Map(mapElement.current, { center: driver, zoom: 13, mapTypeControl: false, streetViewControl: false, fullscreenControl: true, gestureHandling: "greedy" });
+      mapRef.current = map;
+      driverMarkerRef.current = new googleApi.maps.Marker({ map, position: driver, title: "Live ambulance position", label: "🚑" });
+      hospitalMarkerRef.current = new googleApi.maps.Marker({ map, position: destination, title: hospital.name, label: "H" });
+      directionsRef.current = new googleApi.maps.DirectionsRenderer({ map, suppressMarkers: true, polylineOptions: { strokeColor: "#0F766E", strokeWeight: 6, strokeOpacity: 0.9 } });
+      new googleApi.maps.DirectionsService().route({ origin: driver, destination, travelMode: googleApi.maps.TravelMode.DRIVING, provideRouteAlternatives: true }, (result, status) => {
+        if (status === "OK" && result && directionsRef.current) directionsRef.current.setDirections(result);
+      });
+      const bounds = new googleApi.maps.LatLngBounds();
+      bounds.extend(driver);
+      bounds.extend(destination);
+      map.fitBounds(bounds, 48);
+    }).catch(() => undefined);
+    return () => {
+      disposed = true;
+      driverMarkerRef.current?.setMap(null);
+      hospitalMarkerRef.current?.setMap(null);
+      directionsRef.current?.setMap(null);
+      mapRef.current = null;
+    };
+  }, [googleKey, position.lat, position.lng, hospital.name, hospital.location.lat, hospital.location.lng]);
+
+  return <div className={`leaflet-map google-map ${compact ? "compact" : ""}`} ref={mapElement}>{!googleKey && <div className="map-fallback">Google Maps key is not configured.</div>}</div>;
+}
 function Stat({ icon: Icon, label, value, detail }: { icon: typeof Truck; label: string; value: string; detail: string }) { return <div className="stat-card"><div className="stat-icon"><Icon size={18} /></div><span>{label}</span><strong>{value}</strong><small>{detail}</small></div>; }
 function Data({ label, value, tone }: { label: string; value: string; tone?: "red" }) { return <div><span className="data-label">{label}</span><strong className={tone === "red" ? "red-text" : ""}>{value}</strong></div>; }
 function PanelHeading({ title, action, onClick }: { title: string; action?: string; onClick?: () => void }) { return <div className="panel-heading"><h3>{title}</h3>{action && <button className="text-button" onClick={onClick}>{action} <ChevronRight size={15} /></button>}</div>; }
 function ActivityRow({ time, title, detail }: { time: string; title: string; detail: string }) { return <div className="activity-row"><span className="activity-time">{time}</span><div className="activity-icon"><Hospital size={16} /></div><div><b>{title}</b><span>{detail}</span></div><ChevronRight size={16} /></div>; }
 function SettingRow({ icon: Icon, title, detail, action }: { icon: typeof Activity; title: string; detail: string; action: React.ReactNode }) { return <div className="setting-row"><div className="setting-icon"><Icon size={17} /></div><div><b>{title}</b><span>{detail}</span></div><div className="setting-action">{action}</div></div>; }
 export default App;
+
+
+function Login({ onLogin }: { onLogin: () => void }) {
+  const [phone, setPhone] = useState("+91 98765 42041");
+  const [password, setPassword] = useState("captain123");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = () => {
+    if (!phone.trim() || password.length < 6) {
+      setError("Enter a valid registered phone number and password.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    window.setTimeout(() => {
+      setBusy(false);
+      onLogin();
+    }, 550);
+  };
+
+  return <div className="login-shell"><div className="login-visual"><div className="login-brand"><div className="brand-mark"><Ambulance size={28} /></div><div><strong>Ambulance Captain</strong><span>Delhi emergency operations</span></div></div><div className="login-visual-copy"><span className="eyebrow">CAPTAIN PORTAL · DELHI</span><h1>Move patients to care, faster.</h1><p>Accept nearby ambulance requests, verify passengers, and navigate to the safest hospital from one live operations workspace.</p><div className="login-proof"><div><strong>24/7</strong><span>dispatch coverage</span></div><div><strong>4.9</strong><span>captain rating</span></div><div><strong>1 tap</strong><span>to get online</span></div></div></div><div className="login-emergency"><ShieldCheck size={18} /><span>Secure driver access · Live Delhi dispatch</span></div></div><div className="login-card"><div className="login-card-head"><div className="login-icon"><Ambulance size={24} /></div><span className="eyebrow">WELCOME BACK</span><h2>Sign in to Captain</h2><p className="muted">Use your registered driver details to continue.</p></div><label className="field-label">Phone number</label><input className="text-field" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+91 98765 42041" autoComplete="tel" /><label className="field-label">Password</label><input className="text-field" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter password" autoComplete="current-password" /><div className="login-row"><label className="remember"><input type="checkbox" defaultChecked /> Keep me signed in</label><button className="text-link" onClick={() => setError("Password reset is available through dispatcher support.")}>Forgot password?</button></div>{error && <div className="login-error"><X size={15} /> {error}</div>}<button className="primary-button full login-submit" onClick={submit} disabled={busy}>{busy ? "Signing you in…" : <><ArrowRight size={17} /> Sign in to operations</>}</button><p className="login-footnote">Demo access: any valid phone and a 6+ character password.</p></div></div>;
+}
+
+function Earnings({ onHistory, notify }: { onHistory: () => void; notify: (message: string) => void }) {
+  return <div className="earnings-page"><div className="page-heading"><div><span className="eyebrow">CAPTAIN FINANCE</span><h2>Earnings</h2><p className="muted">Track today’s ambulance trips, payouts, and weekly performance.</p></div><button className="secondary-button" onClick={onHistory}><Clock3 size={17} /> View trip history</button></div><div className="stat-grid"><Stat icon={Wallet} label="Today’s earnings" value="₹4,260" detail="6 completed trips" /><Stat icon={CreditCard} label="Pending payout" value="₹1,180" detail="Settles tomorrow" /><Stat icon={Route} label="Weekly trips" value="32" detail="+12% vs last week" /><Stat icon={Star} label="Rating" value="4.9" detail="128 ratings" /></div><div className="content-grid"><section className="panel"><PanelHeading title="Payout summary" action="Download" onClick={() => notify("Payout summary download prepared.")} /><div className="earnings-bars"><div style={{ height: "54%" }}><span>Mon</span></div><div style={{ height: "72%" }}><span>Tue</span></div><div style={{ height: "48%" }}><span>Wed</span></div><div style={{ height: "86%" }}><span>Thu</span></div><div style={{ height: "64%" }}><span>Fri</span></div><div style={{ height: "96%" }}><span>Sat</span></div><div style={{ height: "78%" }}><span>Sun</span></div></div></section><section className="panel"><PanelHeading title="Latest payout" action="Manage account" onClick={() => notify("Payout account settings opened.")} /><div className="payout-card"><div className="payout-icon"><CreditCard size={20} /></div><div><b>HDFC Bank ·•• 2041</b><span>Next settlement · 19 Aug 2026</span></div><strong>₹8,940</strong></div><div className="safety-banner"><ShieldCheck size={18} /><div><b>Account verified</b><span>Your payout details are ready for settlement.</span></div><Check size={17} /></div></section></div></div>;
+}
+
+function SettingsPage({ online, notifications, setNotifications, onToggle, onLogout, notify }: { online: boolean; notifications: boolean; setNotifications: (value: boolean) => void; onToggle: () => void; onLogout: () => void; notify: (message: string) => void }) {
+  return <div className="settings-page"><div className="page-heading"><div><span className="eyebrow">ACCOUNT CONTROLS</span><h2>Settings</h2><p className="muted">Manage how Captain receives dispatch requests and trip updates.</p></div></div><section className="panel settings-card"><SettingRow icon={Activity} title="Availability" detail={online ? "Online and receiving requests" : "Offline and not receiving requests"} action={<button className={`switch ${online ? "on" : ""}`} onClick={onToggle}><span /></button>} /><SettingRow icon={Bell} title="Request notifications" detail={notifications ? "Sound and browser alerts enabled" : "Alerts paused"} action={<button className={`switch ${notifications ? "on" : ""}`} onClick={() => setNotifications(!notifications)}><span /></button>} /><SettingRow icon={Navigation} title="Automatic trip detection" detail="Use GPS progress to detect hospital arrival" action={<button className="icon-button" onClick={() => notify("Automatic trip detection is enabled.")}><BadgeCheck size={18} color="#0F766E" /></button>} /><SettingRow icon={ShieldCheck} title="Safety and documents" detail="All ambulance documents are current" action={<button className="icon-button" onClick={() => notify("Documents are current.")}><ChevronRight size={18} /></button>} /></section><section className="panel danger-zone"><div><h3>Sign out of Captain</h3><p className="muted">You will stop receiving requests on this browser until you sign in again.</p></div><button className="danger-button" onClick={onLogout}>Sign out</button></section></div>;
+}
+
+function HelpPage({ notify }: { notify: (message: string) => void }) {
+  return <div className="help-page"><div className="page-heading"><div><span className="eyebrow">CAPTAIN SUPPORT</span><h2>Help & support</h2><p className="muted">Get quick guidance while you are online or on a trip.</p></div></div><div className="help-grid"><button className="panel help-card" onClick={() => notify("Dispatcher callback requested.")}><Phone size={22} /><div><h3>Call dispatcher</h3><p className="muted">Get help with an active request or route.</p></div><ChevronRight size={18} /></button><button className="panel help-card" onClick={() => notify("Emergency support has been alerted for this demo.")}><Activity size={22} /><div><h3>Emergency support</h3><p className="muted">Alert the operations team during a critical trip.</p></div><ChevronRight size={18} /></button><button className="panel help-card" onClick={() => notify("Safety guide opened.")}><ShieldCheck size={22} /><div><h3>Safety guide</h3><p className="muted">Review patient transfer and ambulance safety steps.</p></div><ChevronRight size={18} /></button></div></div>;
+}
