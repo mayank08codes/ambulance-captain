@@ -147,7 +147,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 20, paddingBottom: 34, gap: 16 },
+  content: { padding: 20, paddingBottom: 34, gap: 16, width: "100%", maxWidth: 1180, alignSelf: "center" },
   headerRow: { minHeight: 42, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 },
   headerSide: { width: 70, alignItems: "flex-start" },
   headerRight: { alignItems: "flex-end" },
@@ -190,8 +190,8 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 },
   sectionTitle: { color: navy, fontSize: 16, fontWeight: "900" },
   linkText: { color: teal, fontSize: 13, fontWeight: "800" },
-  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  statCard: { width: "48%", backgroundColor: white, borderRadius: 15, borderWidth: 1, borderColor: border, padding: 14, gap: 7 },
+  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, width: "100%" },
+  statCard: { flex: 1, minWidth: 210, backgroundColor: white, borderRadius: 15, borderWidth: 1, borderColor: border, padding: 14, gap: 7 },
   statValue: { color: navy, fontSize: 21, fontWeight: "900" },
   statLabel: { color: slate, fontSize: 11 },
   tipCard: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#FFF8E7", padding: 14, borderRadius: 15 },
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   successText: { color: teal, fontSize: 12, marginTop: 2 },
   urgentHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
   urgentHeaderText: { color: slate, fontSize: 13, fontWeight: "700" },
-  mapPanel: { height: 230, backgroundColor: sky, borderRadius: 20, overflow: "hidden", position: "relative", borderWidth: 1, borderColor: "#C9DCE5" },
+  mapPanel: { height: 230, width: "100%", maxWidth: 900, alignSelf: "center", backgroundColor: sky, borderRadius: 20, overflow: "hidden", position: "relative", borderWidth: 1, borderColor: "#C9DCE5" },
   compactMap: { height: 180, marginTop: 6 },
   mapLabel: { position: "absolute", left: 12, top: 12, flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "rgba(255,255,255,0.9)", paddingHorizontal: 9, paddingVertical: 6, borderRadius: 12, zIndex: 3 },
   mapLabelText: { color: navy, fontSize: 10, fontWeight: "800" },

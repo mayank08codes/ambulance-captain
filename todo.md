@@ -16,3 +16,11 @@
 - [x] Add deterministic tests for core request, OTP, route, and payment transitions
 - [x] Run type checking, linting, and app preview verification
 - [ ] Save the final project checkpoint
+
+## Desktop adaptation
+
+- [x] Add a responsive wide-screen layout for the same driver workflow
+- [x] Add desktop sidebar navigation and active-trip workspace treatment
+- [x] Preserve desktop access to requests, OTP, maps, hospitals, routes, payments, history, and profile
+- [ ] Verify responsive behavior at desktop and mobile viewport sizes
+- [ ] Save a new checkpoint for the desktop-enabled project
