@@ -33,3 +33,41 @@
 - [x] Add responsive behavior for smaller browser widths without presenting it as a phone-only app
 - [x] Run web application tests and preview verification
 - [ ] Save a checkpoint for the desktop web application
+
+## Real operations upgrade
+
+- [ ] Audit every clickable control and remove dead-end interactions
+- [ ] Replace the map mock with a real map/GPS integration path
+- [ ] Add browser geolocation permission, live driver position, and location status
+- [ ] Add working route launch/navigation actions and route refresh states
+- [ ] Add editable driver profile and settings screens with save feedback
+- [ ] Add complete request, OTP, trip, hospital, route, payment, and history state transitions
+- [ ] Add persistent backend-ready operational data flow or documented fallback
+- [ ] Request and configure required real-service secrets without exposing them in chat
+- [ ] Run end-to-end web interaction and integration validation
+- [ ] Save a new checkpoint for the upgraded application
+
+## Delhi Google Maps workflow
+
+- [ ] Configure Google Maps browser integration for Delhi
+- [ ] Add Delhi pickup, driver, and hospital coordinates
+- [ ] Add single-driver request acceptance with request locking
+- [ ] Start navigation automatically after valid OTP verification
+- [ ] Show live distance, ETA, route progress, and nearby hospitals
+- [ ] Detect arrival at the selected hospital from GPS proximity or a clear fallback action
+- [ ] Open payment automatically after trip completion
+- [ ] Make hospital, route, payment, profile, and settings actions fully navigable and editable
+- [ ] Validate the end-to-end Delhi request-to-payment flow
+
+## No-key live-style Delhi build
+
+- [x] Replace static map mock with OpenStreetMap tiles and an interactive map view
+- [x] Add browser geolocation permission and live driver position tracking
+- [x] Add Delhi request, pickup, destination, and hospital markers
+- [x] Add distance and ETA calculations for nearby hospitals
+- [x] Add request locking so one driver owns the accepted request
+- [x] Make OTP verification automatically start navigation state
+- [x] Add trip progress and arrival detection with a testable fallback
+- [x] Automatically open the payment session after arrival
+- [x] Make profile, settings, hospital, route, history, and payment controls fully functional
+- [x] Validate the entire no-key live-style workflow
