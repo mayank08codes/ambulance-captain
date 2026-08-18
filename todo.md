@@ -119,3 +119,25 @@
 - [x] Add compare hospitals flow before navigation begins
 - [x] Update recommendations and map markers when driver location changes
 - [x] Validate recommendation ranking and hospital detail interactions
+
+## Location-neutral welcome refresh
+
+- [x] Remove city-specific wording from the visible brand and welcome entry experience
+- [x] Create an attractive Ambulance Captain welcome page with logo, value proposition, and emergency operations highlights
+- [x] Redesign the basic login panel into a polished sign-in experience
+- [x] Add clear login validation, loading, error, and demo-access feedback
+- [x] Keep successful sign-in connected to the driver operations dashboard
+- [x] Validate the welcome page at desktop and smaller browser widths
+- [ ] Save a checkpoint for the refreshed welcome experience
+
+## Welcome page content cleanup
+
+- [x] Remove rating, coverage, one-tap, and other unsupported performance metrics from the welcome/login page
+- [x] Replace city-specific welcome copy with location-neutral emergency operations messaging
+- [x] Keep the first page focused on brand, trust, safety, and sign-in
+- [x] Validate the revised welcome page and save a checkpoint
+
+## Login label refinement
+
+- [x] Change the primary login action label to exactly “Sign in”
+- [x] Validate that the simplified button still submits the login flow correctly
