@@ -232,3 +232,17 @@
 - [x] Increase the font size and weight of Verified driver access, Live trip guidance, and Hospital-aware routing
 - [x] Improve trust-label contrast and spacing on the colorful background
 - [x] Validate readability at desktop width
+
+## Post-login white-screen bug
+
+- [x] Reproduce the blank screen after successful driver sign-in
+- [x] Inspect runtime errors and post-login component rendering
+- [x] Fix the sign-in-to-operations transition
+- [x] Validate the operations screen after login at desktop width
+
+## Deployed blank page and complete workflow hardening
+
+- [x] Reproduce the deployed blank page and identify the production runtime failure
+- [x] Harden the app entrypoint so sign-in and operations render without a white screen
+- [x] Validate request acceptance, OTP, live navigation, hospital selection, arrival, payment, history, profile, settings, and help flows
+- [x] Validate the complete desktop workflow and save a new checkpoint

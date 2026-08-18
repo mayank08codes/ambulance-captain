@@ -102,8 +102,6 @@ function App() {
   const [editingProfile, setEditingProfile] = useState(false);
   const [notifications, setNotifications] = useState(true);
 
-  if (!authenticated) return <Login onLogin={() => setAuthenticated(true)} />;
-
   const notify = (message: string) => {
     setNotice(message);
     window.setTimeout(() => setNotice(""), 2800);
@@ -142,6 +140,8 @@ function App() {
 
   const selectedDistance = useMemo(() => distanceKm(driverPosition, selectedHospital.location), [driverPosition, selectedHospital]);
   const selectedEta = Math.max(3, Math.round(selectedDistance * 4.2));
+
+  if (!authenticated) return <Login onLogin={() => setAuthenticated(true)} />;
 
   const acceptRequest = () => { setTripStage("otp"); setSection("requests"); notify("Request locked to you. Ask the passenger for the OTP."); };
   const verifyOtp = () => {
