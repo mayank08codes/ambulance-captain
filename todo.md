@@ -181,3 +181,29 @@
 - [x] Restore the previous simple ambulance logo asset in the welcome page and sign-in card
 - [x] Restore the simple logo in navigation branding and app configuration
 - [x] Validate the restored logo and save a checkpoint
+
+## Logo visibility and header separation
+
+- [ ] Fix the ambulance logo asset so the ambulance is visibly rendered inside the mark
+- [ ] Separate the RescueRoute app name from the logo instead of placing it inside the logo block
+- [ ] Make RescueRoute a bold standalone heading at the top of the welcome and sign-in surfaces
+- [ ] Validate logo visibility and header spacing and save a checkpoint
+
+## Visible red ambulance logo
+
+- [ ] Create a simple red ambulance silhouette with a white medical cross
+- [ ] Ensure the logo is clearly visible at small and large sizes
+- [ ] Keep RescueRoute as a separate bold app-name heading
+- [ ] Validate the logo and save a checkpoint
+
+## Separate blue logo and app name
+
+- [ ] Keep the blue ambulance logo as a standalone mark
+- [ ] Display RescueRoute as a separate bold heading beside or above the logo
+- [ ] Validate separation across welcome, sign-in, sidebar, and browser branding
+
+## SavLife Captain branding update
+
+- [x] Change the visible app name to “SavLife Captain”
+- [x] Place the ambulance logo on the left side of the app name in the brand header
+- [x] Update the sidebar, welcome/sign-in surfaces, and app configuration consistently
