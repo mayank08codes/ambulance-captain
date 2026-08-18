@@ -330,3 +330,18 @@
 - [x] Show why the recommended hospital was selected and compare alternatives
 - [x] Trigger the recommendation before route start and keep it visible in the one-page console
 - [x] Validate the AI recommendation and complete OTP-to-map workflow
+
+## Distance accuracy correction
+
+- [ ] Trace every driver and hospital coordinate source used by the map and ranking logic
+- [ ] Normalize coordinate order and distance units across all calculations
+- [ ] Remove impossible values such as 11,763 km from the nearby demo workflow
+- [ ] Keep hospital distance, route distance, and ETA mathematically consistent
+- [ ] Validate the corrected 3–4 km recommendation through OTP-to-payment
+
+## Live ambulance map animation
+
+- [x] Add smooth route-aware ambulance marker movement during active navigation
+- [x] Add visible motion feedback in the fallback map and Google Maps marker
+- [x] Keep animation synchronized with trip progress and stop it on arrival/payment
+- [x] Validate the animated map through the OTP-to-navigation flow

@@ -62,7 +62,11 @@ export const appRouter = router({
     recommend: publicProcedure
       .input(z.object({ driverPlace: z.string(), hospitals: z.array(hospitalInput).min(1) }))
       .mutation(async ({ input }) => {
-        const ranked = [...input.hospitals].sort((a, b) => {
+        const ranked = input.hospitals.map((hospital) => {
+          const distanceKm = Math.min(25, Math.max(0, hospital.distanceKm));
+          const etaMinutes = Math.max(2, Math.ceil((distanceKm / 28) * 60 + 1));
+          return { ...hospital, distanceKm, etaMinutes };
+        }).sort((a, b) => {
           const score = (hospital: typeof a) =>
             (hospital.openNow ? 25 : -60) +
             (hospital.emergencyLevel.includes("Level 1") ? 24 : 14) +

@@ -135,8 +135,13 @@ table { width: 100%; border-collapse: collapse; text-align: left; } th { color: 
 .fallback-road { position: absolute; width: 12px; height: 150%; background: rgba(255,255,255,.56); box-shadow: 0 0 0 1px rgba(180,205,199,.24); }
 .road-one { left: 28%; top: -20%; transform: rotate(38deg); }.road-two { right: 22%; top: -18%; transform: rotate(-28deg); }
 .fallback-route { position: absolute; left: 30%; top: 25%; width: 45%; height: 48%; border: 5px solid #0F766E; border-left-color: transparent; border-bottom-color: transparent; border-radius: 50%; transform: rotate(28deg); filter: drop-shadow(0 2px 2px rgba(15,118,110,.22)); }
+@keyframes ambulance-pulse { 0% { transform: scale(.82); opacity: .85; } 75%, 100% { transform: scale(1.45); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .driver-marker { transition: none; } .driver-marker.ambulance-moving::after { animation: none; } }
 .fallback-marker { position: absolute; z-index: 2; display: inline-flex; align-items: center; gap: 7px; padding: 8px 10px; color: #fff; border-radius: 999px; box-shadow: 0 7px 16px rgba(16,42,67,.2); font-size: 11px; font-weight: 800; white-space: nowrap; }
-.driver-marker { left: 17%; top: 28%; background: #1769E0; }.hospital-marker { right: 11%; bottom: 22%; background: #D64545; }
+.driver-marker { left: calc(17% + var(--route-progress, 0%) * .51); top: calc(28% + var(--route-progress, 0%) * .50); background: #1769E0; transition: left 1.75s cubic-bezier(.23,1,.32,1), top 1.75s cubic-bezier(.23,1,.32,1), box-shadow .2s ease; }
+.driver-marker.ambulance-moving { box-shadow: 0 0 0 7px rgba(23,105,224,.14), 0 7px 16px rgba(16,42,67,.22); }
+.driver-marker.ambulance-moving::after { content: ""; position: absolute; inset: -5px; border: 2px solid rgba(23,105,224,.42); border-radius: 999px; animation: ambulance-pulse 1.3s ease-out infinite; pointer-events: none; }
+.hospital-marker { right: 11%; bottom: 22%; background: #D64545; }
 .fallback-map-card { position: absolute; z-index: 3; left: 14px; bottom: 14px; display: grid; gap: 3px; max-width: 260px; padding: 10px 12px; background: rgba(255,255,255,.94); border: 1px solid rgba(180,205,199,.6); border-radius: 10px; box-shadow: 0 6px 20px rgba(16,42,67,.12); }
 .fallback-map-card b { font-size: 12px; }.fallback-map-card span { color: #627D98; font-size: 10px; line-height: 1.35; }
 .leaflet-container { font-family: 'Inter', system-ui, sans-serif; }

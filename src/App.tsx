@@ -58,8 +58,14 @@ type HospitalOption = {
 
 const DEMO_DRIVER: Coordinates = { lat: 40.7128, lng: -74.006 };
 const REQUEST_PICKUP: Coordinates = { lat: 40.7205, lng: -73.9955 };
+
+function validCoordinates(value: Coordinates): Coordinates {
+  return Number.isFinite(value.lat) && Number.isFinite(value.lng) && Math.abs(value.lat) <= 90 && Math.abs(value.lng) <= 180
+    ? value
+    : DEMO_DRIVER;
+}
 const hospitals: HospitalOption[] = [
-  { name: "Central Emergency Hospital", rating: 4.8, reviews: 1240, beds: "ER available", capacity: 82, speciality: "Emergency, trauma, ICU", emergencyLevel: "Level 1 trauma", openNow: true, address: "Emergency District · Main Avenue", phone: "+1 212 410 2200", tag: "Best overall", feedback: "Fast triage and consistently calm emergency teams", reviewHighlight: "Patients praise short intake times and clear updates", location: { lat: 40.718, lng: -73.998 } },
+  { name: "Central Emergency Hospital", rating: 4.8, reviews: 1240, beds: "ER available", capacity: 82, speciality: "Emergency, trauma, ICU", emergencyLevel: "Level 1 trauma", openNow: true, address: "Emergency District · Main Avenue", phone: "+1 212 410 2200", tag: "Best overall", feedback: "Fast triage and consistently calm emergency teams", reviewHighlight: "Patients praise short intake times and clear updates", location: { lat: 40.735, lng: -73.98 } },
   { name: "Riverside Medical Center", rating: 4.6, reviews: 864, beds: "Cardiac unit", capacity: 64, speciality: "Cardiac, emergency, NICU", emergencyLevel: "Level 2 trauma", openNow: true, address: "22 Riverside Drive · Medical Quarter", phone: "+1 212 433 8800", tag: "Top rated", feedback: "Strong cardiac response and family communication", reviewHighlight: "Feedback highlights attentive nurses and clean facilities", location: { lat: 40.731, lng: -73.989 } },
   { name: "Northpoint General Hospital", rating: 4.4, reviews: 702, beds: "Trauma centre", capacity: 46, speciality: "Trauma, orthopaedics, ER", emergencyLevel: "Level 1 trauma", openNow: true, address: "8 Northpoint Road · Civic Medical Zone", phone: "+1 212 455 7711", tag: "24/7 intake", feedback: "Reliable trauma intake with specialist coverage", reviewHighlight: "Drivers report dependable handover and 24/7 reception", location: { lat: 40.699, lng: -74.012 } },
 ];
@@ -76,23 +82,34 @@ const navItems: { id: Section; label: string; icon: typeof LayoutDashboard }[] =
 ];
 
 function distanceKm(a: Coordinates, b: Coordinates) {
+  const from = validCoordinates(a);
+  const to = validCoordinates(b);
   const earth = 6371;
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
-  const x = Math.sin(dLat / 2) ** 2 + Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-  return earth * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+  const dLat = ((to.lat - from.lat) * Math.PI) / 180;
+  const dLng = ((to.lng - from.lng) * Math.PI) / 180;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos((from.lat * Math.PI) / 180) * Math.cos((to.lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return earth * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(Math.max(0, 1 - x)));
+}
+
+function contextualLocation(location: Coordinates, position: Coordinates, fallbackOffset: [number, number]): Coordinates {
+  const current = validCoordinates(position);
+  const rawDistance = distanceKm(current, location);
+  // Demo hospital/pickup coordinates are only trusted when they are genuinely local.
+  // This prevents a live GPS position in another region from showing stale demo distances.
+  return rawDistance <= 25 ? validCoordinates(location) : { lat: current.lat + fallbackOffset[0], lng: current.lng + fallbackOffset[1] };
 }
 
 function contextualHospital(hospital: HospitalOption, position: Coordinates) {
-  const rawDistance = distanceKm(position, hospital.location);
-  if (rawDistance <= 80) return hospital;
   const offsets: Record<string, [number, number]> = {
-    "Central Emergency Hospital": [0.022, 0.018],
-    "Riverside Medical Center": [0.035, -0.012],
-    "Northpoint General Hospital": [-0.018, 0.028],
+    "Central Emergency Hospital": [0.027, 0.018],
+    "Riverside Medical Center": [0.031, -0.012],
+    "Northpoint General Hospital": [-0.024, 0.026],
   };
-  const [latOffset, lngOffset] = offsets[hospital.name] ?? [0.022, 0.018];
-  return { ...hospital, location: { lat: position.lat + latOffset, lng: position.lng + lngOffset } };
+  return { ...hospital, location: contextualLocation(hospital.location, position, offsets[hospital.name] ?? [0.027, 0.018]) };
+}
+
+function contextualPickup(position: Coordinates) {
+  return contextualLocation(REQUEST_PICKUP, position, [0.009, 0.006]);
 }
 
 function formatDistance(distance: number) {
@@ -363,7 +380,7 @@ function UnifiedConsole({
             <span><MapPin size={16} /> {stage === "enroute" || stage === "payment" ? "Live route workspace" : "Booking and hospital preview"}</span>
             <span className="traffic"><span className="status-dot" /> {gpsStatus}</span>
           </div>
-          <MapView position={position} hospital={hospital} />
+          <MapView position={position} hospital={hospital} progress={progress} moving={stage === "enroute"} />
           <div className="console-map-stats">
             <Data label="Driver location" value={driverPlace} />
             <Data label="Hospital distance" value={formatDistance(distance)} />
@@ -379,7 +396,7 @@ function UnifiedConsole({
           </div>
           {stage === "incoming" && <>
             <div className="console-alert"><Bell size={20} /><div><b>Individual ambulance booking</b><span>One available captain can accept this high-priority request.</span></div></div>
-            <div className="console-request"><span className="eyebrow">REQUEST AC-1048 · LIVE</span><h3>Patient transfer request</h3><p className="muted"><b>Patient pickup</b> · {formatDistance(distanceKm(position, REQUEST_PICKUP))} from the driver location.</p><div className="console-detail-grid"><Data label="Patient" value="Aarav Mehta" /><Data label="Urgency" value="High" /><Data label="Service" value="Basic Life Support" /><Data label="Payment" value="UPI · ₹680 est." /></div></div>
+            <div className="console-request"><span className="eyebrow">REQUEST AC-1048 · LIVE</span><h3>Patient transfer request</h3><p className="muted"><b>Patient pickup</b> · {formatDistance(distanceKm(position, contextualPickup(position)))} from the driver location.</p><div className="console-detail-grid"><Data label="Patient" value="Aarav Mehta" /><Data label="Urgency" value="High" /><Data label="Service" value="Basic Life Support" /><Data label="Payment" value="UPI · ₹680 est." /></div></div>
             <div className="ai-decision"><Hospital size={19} /><div><b>{aiLoading ? "AI hospital review in progress" : aiDecision ? `AI review: ${aiDecision.selectedHospital}` : "AI hospital review ready"}</b><span>{aiLoading ? "Comparing nearby emergency hospitals from the driver location…" : aiDecision?.summary ?? "Ranking uses distance, ETA, emergency capability, open status, capacity, ratings, and verified feedback."}</span></div></div>
             <button className="primary-button full" onClick={onAccept}><Check size={17} /> Accept and lock request</button>
             <button className="secondary-button full" onClick={onDecline}><X size={17} /> Decline request</button>
@@ -415,16 +432,16 @@ function UnifiedConsole({
 }
 
 function Dashboard({ online, position, onOpenRequest, onViewTrip, onHistory }: { online: boolean; position: Coordinates; onOpenRequest: () => void; onViewTrip: () => void; onHistory: () => void }) {
-  return <><section className="hero-row"><div><p className="muted">Ready to respond in your area?</p><div className="hero-actions"><button className="primary-button" onClick={onOpenRequest}><Bell size={17} /> Review new request <ArrowRight size={16} /></button><button className="secondary-button" onClick={onViewTrip}><Navigation size={17} /> Open trip workspace</button></div></div><div className="hero-metric"><span>Today's earnings</span><strong>₹4,260</strong><small>+18% vs yesterday</small></div></section><div className="stat-grid"><Stat icon={Truck} label="Trips completed" value="6" detail="Today" /><Stat icon={Wallet} label="Collected" value="₹4,260" detail="UPI & cash" /><Stat icon={Clock3} label="Online time" value="4h 18m" detail="Since 04:24 AM" /><Stat icon={Star} label="Driver rating" value="4.9" detail="128 ratings" /></div><div className="content-grid"><section className="panel request-panel"><PanelHeading title="Incoming emergency request" action="View details" onClick={onOpenRequest} /><div className="request-highlight"><div className="priority"><span className="priority-dot" /> HIGH PRIORITY</div><span className="muted">12 sec ago</span></div><h2>Pickup near the requester</h2><p className="muted">Patient transfer · {formatDistance(distanceKm(position, REQUEST_PICKUP))} pickup distance · Basic Life Support</p><MapView compact position={position} hospital={hospitals[0]} /><div className="request-data"><Data label="Estimated fare" value="₹680" /><Data label="Payment" value="UPI" /><Data label="Urgency" value="High" tone="red" /></div><button className="link-button" onClick={onOpenRequest}>Review and respond <ChevronRight size={16} /></button><div className="safety-banner"><ShieldCheck size={20} /><div><b>Safety check complete</b><span>Ambulance documents and emergency kit are up to date.</span></div><Check size={18} /></div></section><section className="panel"><PanelHeading title="Today's route activity" action="View history" onClick={onHistory} /><div className="activity-list"><ActivityRow time="08:12 AM" title="Central Emergency Hospital" detail="Trip AC-2047 · Paid ₹680" /><ActivityRow time="06:48 AM" title="Riverside Medical Center" detail="Trip AC-2046 · Paid ₹540" /><ActivityRow time="Yesterday" title="Northpoint General Hospital" detail="Trip AC-2045 · Paid ₹720" /></div></section></div><div className={`availability-bar ${online ? "available" : "offline"}`}><div className="status-dot" /><div><b>{online ? "You are available for dispatch" : "You are offline"}</b><span>{online ? "Nearby ambulance requests will appear in Requests." : "Switch online to receive nearby requests."}</span></div><span className="bar-action">{online ? "1 request waiting" : "Go online"}</span></div></>;
+  return <><section className="hero-row"><div><p className="muted">Ready to respond in your area?</p><div className="hero-actions"><button className="primary-button" onClick={onOpenRequest}><Bell size={17} /> Review new request <ArrowRight size={16} /></button><button className="secondary-button" onClick={onViewTrip}><Navigation size={17} /> Open trip workspace</button></div></div><div className="hero-metric"><span>Today's earnings</span><strong>₹4,260</strong><small>+18% vs yesterday</small></div></section><div className="stat-grid"><Stat icon={Truck} label="Trips completed" value="6" detail="Today" /><Stat icon={Wallet} label="Collected" value="₹4,260" detail="UPI & cash" /><Stat icon={Clock3} label="Online time" value="4h 18m" detail="Since 04:24 AM" /><Stat icon={Star} label="Driver rating" value="4.9" detail="128 ratings" /></div><div className="content-grid"><section className="panel request-panel"><PanelHeading title="Incoming emergency request" action="View details" onClick={onOpenRequest} /><div className="request-highlight"><div className="priority"><span className="priority-dot" /> HIGH PRIORITY</div><span className="muted">12 sec ago</span></div><h2>Pickup near the requester</h2><p className="muted">Patient transfer · {formatDistance(distanceKm(position, contextualPickup(position)))} pickup distance · Basic Life Support</p><MapView compact position={position} hospital={hospitals[0]} /><div className="request-data"><Data label="Estimated fare" value="₹680" /><Data label="Payment" value="UPI" /><Data label="Urgency" value="High" tone="red" /></div><button className="link-button" onClick={onOpenRequest}>Review and respond <ChevronRight size={16} /></button><div className="safety-banner"><ShieldCheck size={20} /><div><b>Safety check complete</b><span>Ambulance documents and emergency kit are up to date.</span></div><Check size={18} /></div></section><section className="panel"><PanelHeading title="Today's route activity" action="View history" onClick={onHistory} /><div className="activity-list"><ActivityRow time="08:12 AM" title="Central Emergency Hospital" detail="Trip AC-2047 · Paid ₹680" /><ActivityRow time="06:48 AM" title="Riverside Medical Center" detail="Trip AC-2046 · Paid ₹540" /><ActivityRow time="Yesterday" title="Northpoint General Hospital" detail="Trip AC-2045 · Paid ₹720" /></div></section></div><div className={`availability-bar ${online ? "available" : "offline"}`}><div className="status-dot" /><div><b>{online ? "You are available for dispatch" : "You are offline"}</b><span>{online ? "Nearby ambulance requests will appear in Requests." : "Switch online to receive nearby requests."}</span></div><span className="bar-action">{online ? "1 request waiting" : "Go online"}</span></div></>;
 }
 
 function Requests({ stage, otp, setOtp, onAccept, onVerify, onDecline, driverPosition, selectedHospital }: { stage: TripStage; otp: string; setOtp: (value: string) => void; onAccept: () => void; onVerify: () => void; onDecline: () => void; driverPosition: Coordinates; selectedHospital: HospitalOption }) {
-  const pickupDistance = formatDistance(distanceKm(driverPosition, REQUEST_PICKUP));
+  const pickupDistance = formatDistance(distanceKm(driverPosition, contextualPickup(driverPosition)));
   return <div className="wide-grid"><section className="panel request-detail"><PanelHeading title="Request AC-1048" action="Live · Current area" /><div className="request-header"><div className="priority"><span className="priority-dot" /> HIGH PRIORITY</div><span className="tag">Patient transfer</span></div><h2>Requester pickup location</h2><p className="muted">Live pickup point from the customer · {pickupDistance} away</p><MapView compact position={driverPosition} hospital={selectedHospital} /><div className="detail-grid"><Data label="Patient" value="Aarav Mehta" /><Data label="Contact" value="+91 98••• 2041" /><Data label="Ambulance" value="Basic Life Support" /><Data label="Payment" value="UPI · ₹680 est." /></div><div className="note"><ShieldCheck size={18} /><span>Requester says the patient is conscious and needs transfer to an emergency department.</span></div></section><section className="panel decision-panel">{stage === "incoming" ? <><div className="panel-icon red"><Bell size={22} /></div><h2>Review this request</h2><p className="muted">Accept to lock this request to your ambulance, or decline to return it to dispatch.</p><button className="primary-button full" onClick={onAccept}><Check size={17} /> Accept and lock request</button><button className="secondary-button full" onClick={onDecline}><X size={17} /> Decline request</button></> : <><div className="panel-icon teal"><BadgeCheck size={22} /></div><h2>Verify passenger OTP</h2><p className="muted">The trip cannot start until the passenger gives you the code.</p><label className="field-label">Passenger OTP</label><input className="otp-field" value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="4826" inputMode="numeric" /><span className="helper">Demo code: 4826</span><button className="primary-button full" onClick={onVerify}><BadgeCheck size={17} /> Verify and start navigation</button></>}</section></div>;
 }
 
 function ActiveTrip({ stage, hospital, position, progress, distance, eta, gpsStatus, onHospitals, onArrive }: { stage: TripStage; hospital: HospitalOption; position: Coordinates; progress: number; distance: number; eta: number; gpsStatus: string; onHospitals: () => void; onArrive: () => void }) {
-  return <><div className="trip-toolbar"><div><span className="eyebrow">TRIP AC-1048 · {stage === "arrived" || stage === "payment" ? "ARRIVED" : "EN ROUTE"}</span><h2>Taking Aarav to emergency care</h2></div><div className="trip-toolbar-actions"><button className="secondary-button" onClick={() => window.open("tel:+919876542041")}><Phone size={16} /> Dispatcher</button><button className="danger-button" onClick={() => alert("Emergency assistance requested for this demo trip.")}><Activity size={16} /> Emergency</button></div></div><div className="trip-layout"><section className="panel map-panel"><div className="map-head"><span><MapPin size={16} /> Live OpenStreetMap route</span><span className="traffic"><span className="status-dot" /> {gpsStatus}</span></div><MapView position={position} hospital={hospital} /><div className="progress-track"><span style={{ width: `${progress}%` }} /></div><div className="map-footer"><div><span className="muted">ARRIVAL ETA</span><strong>{progress >= 100 ? "Arrived" : `${eta} min est.`}</strong><small>Live GPS estimate</small></div><div><span className="muted">LIVE DISTANCE</span><strong>{formatDistance(distance)}</strong></div><div><span className="muted">DESTINATION</span><strong>{hospital.name}</strong></div></div></section><aside className="panel trip-side"><div className="side-section"><span className="eyebrow">AUTOMATIC TRIP DETECTION</span><h3>{progress >= 100 ? "Hospital arrival detected" : "Navigation in progress"}</h3><p className="muted">{progress >= 100 ? "The payment session opens automatically after arrival." : "GPS progress updates the route and nearby hospital distance."}</p></div><div className="selected-hospital"><Hospital size={20} /><div><b>{hospital.name}</b><span>{hospital.rating} ★ · {formatDistance(distance)} · {hospital.beds}</span><small>Live GPS estimate · updates as the ambulance moves</small></div></div>{progress < 100 ? <><button className="primary-button full" onClick={onHospitals}><Route size={17} /> Compare nearby hospitals</button><button className="secondary-button full" onClick={onArrive}><MapPin size={17} /> Simulate GPS arrival</button></> : <button className="primary-button full" onClick={onArrive}><CreditCard size={17} /> Open payment session</button>}</aside></div></>;
+  return <><div className="trip-toolbar"><div><span className="eyebrow">TRIP AC-1048 · {stage === "arrived" || stage === "payment" ? "ARRIVED" : "EN ROUTE"}</span><h2>Taking Aarav to emergency care</h2></div><div className="trip-toolbar-actions"><button className="secondary-button" onClick={() => window.open("tel:+919876542041")}><Phone size={16} /> Dispatcher</button><button className="danger-button" onClick={() => alert("Emergency assistance requested for this demo trip.")}><Activity size={16} /> Emergency</button></div></div><div className="trip-layout"><section className="panel map-panel"><div className="map-head"><span><MapPin size={16} /> Live OpenStreetMap route</span><span className="traffic"><span className="status-dot" /> {gpsStatus}</span></div><MapView position={position} hospital={hospital} progress={progress} moving={stage === "enroute"} /><div className="progress-track"><span style={{ width: `${progress}%` }} /></div><div className="map-footer"><div><span className="muted">ARRIVAL ETA</span><strong>{progress >= 100 ? "Arrived" : `${eta} min est.`}</strong><small>Live GPS estimate</small></div><div><span className="muted">LIVE DISTANCE</span><strong>{formatDistance(distance)}</strong></div><div><span className="muted">DESTINATION</span><strong>{hospital.name}</strong></div></div></section><aside className="panel trip-side"><div className="side-section"><span className="eyebrow">AUTOMATIC TRIP DETECTION</span><h3>{progress >= 100 ? "Hospital arrival detected" : "Navigation in progress"}</h3><p className="muted">{progress >= 100 ? "The payment session opens automatically after arrival." : "GPS progress updates the route and nearby hospital distance."}</p></div><div className="selected-hospital"><Hospital size={20} /><div><b>{hospital.name}</b><span>{hospital.rating} ★ · {formatDistance(distance)} · {hospital.beds}</span><small>Live GPS estimate · updates as the ambulance moves</small></div></div>{progress < 100 ? <><button className="primary-button full" onClick={onHospitals}><Route size={17} /> Compare nearby hospitals</button><button className="secondary-button full" onClick={onArrive}><MapPin size={17} /> Simulate GPS arrival</button></> : <button className="primary-button full" onClick={onArrive}><CreditCard size={17} /> Open payment session</button>}</aside></div></>;
 }
 
 function Hospitals({ selected, onSelect, position, onStart }: { selected: HospitalOption; onSelect: (hospital: HospitalOption) => void; position: Coordinates; onStart: () => void }) {
@@ -439,7 +456,7 @@ function History({ paymentStatus }: { paymentStatus: "pending" | "paid" }) { ret
 
 function Profile({ profile, setProfile, online, onToggle, editing, setEditing, notifications, setNotifications, notify }: { profile: { name: string; phone: string; vehicle: string }; setProfile: (value: { name: string; phone: string; vehicle: string }) => void; online: boolean; onToggle: () => void; editing: boolean; setEditing: (value: boolean) => void; notifications: boolean; setNotifications: (value: boolean) => void; notify: (message: string) => void }) { const [draft, setDraft] = useState(profile); return <div className="profile-grid"><section className="panel profile-card"><div className="profile-avatar">RK</div>{editing ? <><label className="field-label">Driver name</label><input className="text-field" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /><label className="field-label">Phone</label><input className="text-field" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} /><label className="field-label">Vehicle ID</label><input className="text-field" value={draft.vehicle} onChange={(e) => setDraft({ ...draft, vehicle: e.target.value })} /><button className="primary-button full" onClick={() => { setProfile(draft); setEditing(false); notify("Driver profile saved."); }}><Check size={16} /> Save profile</button></> : <><h2>{profile.name}</h2><p className="muted">SavLife Captain · Emergency response</p><div className="profile-rating"><Star size={18} fill="currentColor" /> 4.9 <span>128 ratings</span></div><button className="secondary-button full" onClick={() => { setDraft(profile); setEditing(true); }}><Settings size={16} /> Edit profile</button></>}</section><section className="panel settings-card"><PanelHeading title="Driver settings" action="Saved" /><SettingRow icon={Activity} title="Availability" detail={online ? "Online and receiving requests" : "Offline"} action={<button className={`switch ${online ? "on" : ""}`} onClick={onToggle}><span /></button>} /><SettingRow icon={ShieldCheck} title="Documents & verification" detail="All documents are current" action={<BadgeCheck size={18} color="#0F766E" />} /><SettingRow icon={Wallet} title="Payout account" detail="HDFC Bank · ending 2041" action={<button className="icon-button" onClick={() => notify("Payout account settings opened.")}><ChevronRight size={18} /></button>} /><SettingRow icon={Bell} title="Notifications" detail={notifications ? "Request alerts enabled" : "Request alerts paused"} action={<button className={`switch ${notifications ? "on" : ""}`} onClick={() => setNotifications(!notifications)}><span /></button>} /></section></div>; }
 
-function MapView({ compact = false, position, hospital }: { compact?: boolean; position: Coordinates; hospital: HospitalOption }) {
+function MapView({ compact = false, position, hospital, progress = 0, moving = false }: { compact?: boolean; position: Coordinates; hospital: HospitalOption; progress?: number; moving?: boolean }) {
   const mapElement = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const driverMarkerRef = useRef<google.maps.Marker | null>(null);
@@ -478,9 +495,11 @@ function MapView({ compact = false, position, hospital }: { compact?: boolean; p
       }
       const driver = { lat: position.lat, lng: position.lng };
       const destination = { lat: effectiveHospital.location.lat, lng: effectiveHospital.location.lng };
+      const routeProgress = moving ? Math.min(1, Math.max(0, progress / 100)) : 0;
+      const displayDriver = { lat: driver.lat + (destination.lat - driver.lat) * routeProgress, lng: driver.lng + (destination.lng - driver.lng) * routeProgress };
       const map = new googleApi.maps.Map(mapElement.current, { center: driver, zoom: 13, mapTypeControl: false, streetViewControl: false, fullscreenControl: true, gestureHandling: "greedy" });
       mapRef.current = map;
-      driverMarkerRef.current = new googleApi.maps.Marker({ map, position: driver, title: "Live ambulance position", label: "🚑" });
+      driverMarkerRef.current = new googleApi.maps.Marker({ map, position: displayDriver, title: moving ? "Ambulance moving to hospital" : "Live ambulance position", label: "🚑" });
       hospitalMarkerRef.current = new googleApi.maps.Marker({ map, position: destination, title: effectiveHospital.name, label: "H" });
       directionsRef.current = new googleApi.maps.DirectionsRenderer({ map, suppressMarkers: true, polylineOptions: { strokeColor: "#0F766E", strokeWeight: 6, strokeOpacity: 0.9 } });
       new googleApi.maps.DirectionsService().route({ origin: driver, destination, travelMode: googleApi.maps.TravelMode.DRIVING, provideRouteAlternatives: true }, (result, status) => {
@@ -504,7 +523,7 @@ function MapView({ compact = false, position, hospital }: { compact?: boolean; p
       mapRef.current = null;
       if (googleWindow.gm_authFailure) googleWindow.gm_authFailure = previousAuthFailure;
     };
-  }, [googleKey, position.lat, position.lng, hospital.name, hospital.location.lat, hospital.location.lng]);
+  }, [googleKey, position.lat, position.lng, hospital.name, hospital.location.lat, hospital.location.lng, progress, moving]);
 
   const minLat = Math.min(position.lat, effectiveHospital.location.lat) - 0.015;
   const maxLat = Math.max(position.lat, effectiveHospital.location.lat) + 0.015;
@@ -517,7 +536,7 @@ function MapView({ compact = false, position, hospital }: { compact?: boolean; p
     {mapState !== "ready" && <div className="map-fallback live-map-fallback">
       <iframe className="fallback-map-iframe" title="Live route map" src={fallbackMapUrl} loading="lazy" />
       <div className="fallback-road road-one" /><div className="fallback-road road-two" /><div className="fallback-route" />
-      <div className="fallback-marker driver-marker"><Ambulance size={18} /><span>Live ambulance</span></div>
+      <div className={`fallback-marker driver-marker ${moving ? "ambulance-moving" : ""}`} style={{ left: `${17 + (moving ? Math.min(100, Math.max(0, progress)) : 0) * 0.51}%`, top: `${28 + (moving ? Math.min(100, Math.max(0, progress)) : 0) * 0.5}%` }}><Ambulance size={18} /><span>{moving ? "Ambulance moving" : "Live ambulance"}</span></div>
       <div className="fallback-marker hospital-marker"><Hospital size={18} /><span>{effectiveHospital.name}</span></div>
       <div className="fallback-map-card"><b>{mapState === "loading" ? "Loading live map" : "Live route preview"}</b><span>{mapState === "loading" ? "Connecting to Google Maps…" : "GPS route remains visible while the map service reconnects."}</span></div>
     </div>}
