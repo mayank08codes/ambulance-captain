@@ -314,3 +314,19 @@
 - [x] Display the fetched current GPS place under the exact label “Driver location”
 - [x] Keep patient pickup as a separate named destination
 - [x] Ensure topbar, map panel, request card, and route panel never call the driver location patient location
+
+## Visible driver map and automatic OTP route
+
+- [x] Render a visible map surface in the unified console
+- [x] Show the captain’s current GPS position with a clear Driver location marker
+- [x] Start the live route automatically after valid OTP 4826
+- [x] Keep the route, hospital, distance, ETA, and driver marker visible in the same workspace
+- [x] Validate Google-map and fallback-map behavior after OTP
+
+## Explainable AI hospital recommendation
+
+- [x] Add an explainable AI-style hospital decision using live driver distance and ETA
+- [x] Include emergency capability, open status, capacity, rating, review volume, and feedback in the decision
+- [x] Show why the recommended hospital was selected and compare alternatives
+- [x] Trigger the recommendation before route start and keep it visible in the one-page console
+- [x] Validate the AI recommendation and complete OTP-to-map workflow

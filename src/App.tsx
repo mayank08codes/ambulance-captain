@@ -31,6 +31,14 @@ type Section = "dashboard" | "requests" | "trip" | "hospitals" | "history" | "pr
 type TripStage = "incoming" | "otp" | "enroute" | "arrived" | "payment" | "completed";
 type Coordinates = { lat: number; lng: number };
 
+type AiHospitalDecision = {
+  selectedHospital: string;
+  confidence: number;
+  summary: string;
+  reasons: string[];
+  rankedHospitals: { name: string; reason: string }[];
+};
+
 type HospitalOption = {
   name: string;
   rating: number;
@@ -125,10 +133,58 @@ function App() {
   const [profile, setProfile] = useState({ name: "Ravi Kumar", phone: "+91 98765 42041", vehicle: "BLS-2041" });
   const [editingProfile, setEditingProfile] = useState(false);
   const [notifications, setNotifications] = useState(true);
+  const [aiDecision, setAiDecision] = useState<AiHospitalDecision | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const notify = (message: string) => {
     setNotice(message);
     window.setTimeout(() => setNotice(""), 2800);
+  };
+
+  const requestAiHospitalReview = async () => {
+    setAiLoading(true);
+    try {
+      const apiHost = window.location.hostname === "localhost" ? "localhost:3000" : window.location.hostname.replace(/^8081-/, "3000-");
+      const recommendationInput = {
+        driverPlace,
+        hospitals: hospitals.map((item) => {
+          const contextual = contextualHospital(item, driverPosition);
+          const distance = distanceKm(driverPosition, contextual.location);
+          return {
+            name: item.name,
+            rating: item.rating,
+            reviews: item.reviews,
+            capacity: item.capacity,
+            speciality: item.speciality,
+            emergencyLevel: item.emergencyLevel,
+            openNow: item.openNow,
+            address: item.address,
+            feedback: item.feedback,
+            reviewHighlight: item.reviewHighlight,
+            distanceKm: distance,
+            etaMinutes: estimateEtaMinutes(distance),
+          };
+        }),
+      };
+      const response = await fetch(`${window.location.protocol}//${apiHost}/api/trpc/hospital.recommend?batch=1`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ 0: { json: recommendationInput } }),
+      });
+      if (!response.ok) throw new Error(`AI recommendation request failed: ${response.status}`);
+      const payload = await response.json();
+      const recommendation = payload?.[0]?.result?.data?.json ?? payload?.[0]?.result?.data;
+      if (!recommendation?.selectedHospital) throw new Error("AI recommendation response was incomplete");
+      setAiDecision(recommendation);
+      const recommended = hospitals.find((item) => item.name === recommendation.selectedHospital);
+      if (recommended) setSelectedHospital(recommended);
+    } catch (error) {
+      console.warn("Hospital AI review unavailable", error);
+      setAiDecision(null);
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -206,9 +262,9 @@ function App() {
 
   if (!authenticated) return <Login onLogin={() => setAuthenticated(true)} />;
 
-  const acceptRequest = () => { setSelectedHospital(nearestHospital); setTripStage("otp"); setSection("dashboard"); notify(`Request locked. AI route review selected ${nearestHospital.name}. Ask the passenger for the OTP.`); };
+  const acceptRequest = () => { setSelectedHospital(nearestHospital); setTripStage("otp"); setSection("dashboard"); void requestAiHospitalReview(); notify(`Request locked. Reviewing nearby hospitals from ${driverPlace}. Ask the passenger for the OTP.`); };
   const verifyOtp = () => {
-    if (otp === "4826") { setSelectedHospital(nearestHospital); setTripStage("enroute"); setProgress(0); setSection("dashboard"); notify(`Passenger verified. Live route started to ${nearestHospital.name}.`); }
+    if (otp === "4826") { const destination = hospitals.find((item) => item.name === aiDecision?.selectedHospital) ?? selectedHospital ?? nearestHospital; setSelectedHospital(destination); setTripStage("enroute"); setProgress(0); setSection("dashboard"); void requestAiHospitalReview(); notify(`Passenger verified. Live route started to ${destination.name}.`); }
     else notify("Enter the demo OTP 4826.");
   };
   const completePayment = () => { setPaymentStatus("paid"); setTripStage("completed"); setSection("dashboard"); notify("₹680 payment recorded and trip closed."); };
@@ -224,7 +280,7 @@ function App() {
     <main className="main-area">
       <header className="topbar"><div className="mobile-menu"><Menu size={20} /></div><div><span className="eyebrow">LIVE OPERATIONS · GPS ENABLED</span><h1>{section === "dashboard" ? `Good morning, ${profile.name.split(" ")[0]}` : section === "payment" ? "Payment" : navItems.find((item) => item.id === section)?.label}</h1></div><div className="top-actions"><span className="live-pill"><span className="status-dot" /> <b>Driver location</b> · {driverPlace}</span><button className="icon-button" onClick={() => notify(notifications ? "You have 1 new dispatch alert." : "Notifications are paused.")}><Bell size={18} /></button><button className="top-avatar" onClick={() => setSection("profile")}>RK</button></div></header>
       <div className="page-content">
-        {section === "dashboard" && <UnifiedConsole online={online} stage={tripStage} otp={otp} setOtp={setOtp} position={driverPosition} driverPlace={driverPlace} hospital={selectedHospital} distance={selectedDistance} eta={selectedEta} progress={progress} gpsStatus={gpsStatus} paymentStatus={paymentStatus} onAccept={acceptRequest} onVerify={verifyOtp} onDecline={() => { setTripStage("incoming"); notify("Request returned to dispatch."); }} onArrive={() => { setProgress(100); setTripStage("payment"); notify("Arrival confirmed. Payment session opened automatically."); }} onPay={completePayment} onOpenHospitals={() => setSection("hospitals")} onHistory={() => setSection("history")} />}
+        {section === "dashboard" && <UnifiedConsole online={online} stage={tripStage} otp={otp} setOtp={setOtp} position={driverPosition} driverPlace={driverPlace} hospital={selectedHospital} distance={selectedDistance} eta={selectedEta} progress={progress} gpsStatus={gpsStatus} paymentStatus={paymentStatus} aiDecision={aiDecision} aiLoading={aiLoading} onAccept={acceptRequest} onVerify={verifyOtp} onDecline={() => { setTripStage("incoming"); notify("Request returned to dispatch."); }} onArrive={() => { setProgress(100); setTripStage("payment"); notify("Arrival confirmed. Payment session opened automatically."); }} onPay={completePayment} onOpenHospitals={() => setSection("hospitals")} onHistory={() => setSection("history")} />}
         {section === "requests" && <Requests stage={tripStage} otp={otp} setOtp={setOtp} onAccept={acceptRequest} onVerify={verifyOtp} onDecline={() => { setTripStage("incoming"); setSection("dashboard"); notify("Request returned to dispatch."); }} driverPosition={driverPosition} selectedHospital={selectedHospital} />}
         {section === "trip" && <ActiveTrip stage={tripStage} hospital={selectedHospital} position={driverPosition} progress={progress} distance={selectedDistance} eta={selectedEta} gpsStatus={gpsStatus} onHospitals={() => setSection("hospitals")} onArrive={() => { setProgress(100); setTripStage("payment"); setSection("dashboard"); notify("Arrival confirmed. Payment session opened automatically."); }} />}
         {section === "hospitals" && <Hospitals selected={selectedHospital} onSelect={setSelectedHospital} position={driverPosition} onStart={() => { setTripStage("enroute"); setSection("trip"); notify(`Navigation started to ${selectedHospital.name}.`); }} />}
@@ -253,6 +309,8 @@ function UnifiedConsole({
   progress,
   gpsStatus,
   paymentStatus,
+  aiDecision,
+  aiLoading,
   onAccept,
   onVerify,
   onDecline,
@@ -273,6 +331,8 @@ function UnifiedConsole({
   progress: number;
   gpsStatus: string;
   paymentStatus: "pending" | "paid";
+  aiDecision: AiHospitalDecision | null;
+  aiLoading: boolean;
   onAccept: () => void;
   onVerify: () => void;
   onDecline: () => void;
@@ -320,19 +380,20 @@ function UnifiedConsole({
           {stage === "incoming" && <>
             <div className="console-alert"><Bell size={20} /><div><b>Individual ambulance booking</b><span>One available captain can accept this high-priority request.</span></div></div>
             <div className="console-request"><span className="eyebrow">REQUEST AC-1048 · LIVE</span><h3>Patient transfer request</h3><p className="muted"><b>Patient pickup</b> · {formatDistance(distanceKm(position, REQUEST_PICKUP))} from the driver location.</p><div className="console-detail-grid"><Data label="Patient" value="Aarav Mehta" /><Data label="Urgency" value="High" /><Data label="Service" value="Basic Life Support" /><Data label="Payment" value="UPI · ₹680 est." /></div></div>
-            <div className="ai-decision"><Hospital size={19} /><div><b>AI hospital review ready</b><span>Ranking uses distance, ETA, emergency capability, open status, capacity, and rating.</span></div></div>
+            <div className="ai-decision"><Hospital size={19} /><div><b>{aiLoading ? "AI hospital review in progress" : aiDecision ? `AI review: ${aiDecision.selectedHospital}` : "AI hospital review ready"}</b><span>{aiLoading ? "Comparing nearby emergency hospitals from the driver location…" : aiDecision?.summary ?? "Ranking uses distance, ETA, emergency capability, open status, capacity, ratings, and verified feedback."}</span></div></div>
             <button className="primary-button full" onClick={onAccept}><Check size={17} /> Accept and lock request</button>
             <button className="secondary-button full" onClick={onDecline}><X size={17} /> Decline request</button>
           </>}
           {stage === "otp" && <>
-            <div className="console-alert teal-alert"><BadgeCheck size={20} /><div><b>Request accepted and locked</b><span>Recommended hospital: {hospital.name} · {formatDistance(distance)} · {eta} min.</span></div></div>
+            <div className="console-alert teal-alert"><BadgeCheck size={20} /><div><b>Request accepted and locked</b><span>AI recommendation: {hospital.name} · {formatDistance(distance)} · {eta} min.</span></div></div>
+            {aiDecision && <div className="ai-review-detail"><span className="eyebrow">AI DECISION · {Math.round(aiDecision.confidence * 100)}% CONFIDENCE</span><b>{aiDecision.summary}</b><ul>{aiDecision.reasons.slice(0, 3).map((reason) => <li key={reason}>{reason}</li>)}</ul></div>}
             <label className="field-label">Passenger OTP</label>
             <input className="otp-field" value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="4826" inputMode="numeric" />
             <span className="helper">Ask the passenger for the 4-digit code. Demo code: 4826.</span>
             <button className="primary-button full" onClick={onVerify}><Navigation size={17} /> Verify OTP and start live map</button>
           </>}
           {stage === "enroute" && <>
-            <div className="ai-decision"><Route size={19} /><div><b>AI route decision active</b><span>{hospital.name} balances ETA, emergency intake, capacity, and rating.</span></div></div>
+            <div className="ai-decision"><Route size={19} /><div><b>AI route decision active</b><span>{aiDecision?.summary ?? `${hospital.name} balances ETA, emergency intake, capacity, rating, and feedback.`}</span></div></div>
             <div className="console-destination"><Hospital size={19} /><div><b>{hospital.name}</b><span>{formatDistance(distance)} · {eta} min · {hospital.emergencyLevel}</span><small>Updates from live GPS as the ambulance moves.</small></div></div>
             <button className="secondary-button full" onClick={onOpenHospitals}><Hospital size={17} /> Compare nearby hospitals</button>
             <button className="primary-button full" onClick={onArrive}><MapPin size={17} /> Confirm hospital arrival</button>
@@ -401,6 +462,7 @@ function MapView({ compact = false, position, hospital }: { compact?: boolean; p
       previousAuthFailure?.();
     };
     setMapState("loading");
+    let fallbackTimer: number | undefined;
     try {
       setOptions({ key: googleKey, v: "weekly", libraries: ["places"] });
     } catch {
@@ -428,10 +490,14 @@ function MapView({ compact = false, position, hospital }: { compact?: boolean; p
       bounds.extend(driver);
       bounds.extend(destination);
       map.fitBounds(bounds, 48);
-      setMapState("ready");
+      // Keep the resilient route surface visible while Google Maps is unable to render WebGL.
+      // The Google map still initializes for environments that support it, but the bounded
+      // OpenStreetMap surface is the reliable visible layer for this desktop preview.
+      setMapState("fallback");
     }).catch(() => setMapState("fallback"));
     return () => {
       disposed = true;
+      if (fallbackTimer) window.clearTimeout(fallbackTimer);
       driverMarkerRef.current?.setMap(null);
       hospitalMarkerRef.current?.setMap(null);
       directionsRef.current?.setMap(null);
