@@ -346,6 +346,12 @@
 - [x] Keep animation synchronized with trip progress and stop it on arrival/payment
 - [x] Validate the animated map through the OTP-to-navigation flow
 
+## Emergency reason wording
+
+- [x] Replace the generic Patient transfer request title with a clear condition-based emergency reason
+- [x] Keep the reason visible consistently across booking, OTP, route, and payment states
+- [x] Validate the new wording without changing the patient condition details
+
 ## Fast post-OTP route and payment handoff
 
 - [x] Start ambulance movement immediately after OTP 4826 verification
