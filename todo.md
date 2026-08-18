@@ -220,3 +220,15 @@
 - [x] Keep the ambulance illustration inside a blue square icon
 - [x] Remove all SavLife Captain text from inside the square icon
 - [x] Keep SavLife Captain separate beside the icon and validate the welcome/sign-in surfaces
+
+## Large top SavLife Captain title
+
+- [x] Make SavLife Captain a large bold title at the top
+- [x] Position the title immediately to the right of the blue ambulance square
+- [x] Keep the title outside the square and validate welcome/sign-in alignment
+
+## Trust label readability refinement
+
+- [x] Increase the font size and weight of Verified driver access, Live trip guidance, and Hospital-aware routing
+- [x] Improve trust-label contrast and spacing on the colorful background
+- [x] Validate readability at desktop width
