@@ -167,3 +167,38 @@ table { width: 100%; border-collapse: collapse; text-align: left; } th { color: 
   .login-trust-row { gap: 12px; flex-wrap: wrap; }
   .login-trust-row div { font-size: 11px; }
 }
+
+/* SavLife Captain colorful welcome treatment */
+.login-visual {
+  background:
+    radial-gradient(circle at 12% 12%, rgba(56, 189, 248, .48), transparent 28%),
+    radial-gradient(circle at 88% 16%, rgba(167, 139, 250, .42), transparent 26%),
+    radial-gradient(circle at 62% 88%, rgba(45, 212, 191, .5), transparent 35%),
+    linear-gradient(135deg, #06152f 0%, #0b3f78 46%, #155e9d 72%, #087f83 100%);
+}
+.login-visual::before {
+  opacity: .34;
+  background:
+    linear-gradient(125deg, transparent 0 38%, rgba(255,255,255,.16) 38.2%, transparent 38.7% 100%),
+    linear-gradient(28deg, transparent 0 57%, rgba(125, 226, 209, .18) 57.2%, transparent 57.8% 100%),
+    radial-gradient(circle at 72% 28%, rgba(255,255,255,.12) 0 1px, transparent 2px);
+  background-size: auto, auto, 24px 24px;
+}
+.login-visual::after {
+  border-color: rgba(186, 230, 253, .28);
+  box-shadow: 0 0 0 60px rgba(125, 226, 209, .08), 0 0 0 120px rgba(129, 140, 248, .09), 0 0 0 190px rgba(56, 189, 248, .08);
+}
+.login-brand strong { color: #FFFFFF; font-size: 20px; letter-spacing: -.45px; }
+.login-brand span { color: #C7E9FF; }
+.login-visual-copy h1 { color: #FFFFFF; text-shadow: 0 2px 22px rgba(2, 12, 36, .22); }
+.login-visual-copy p { color: #E0F2FE; }
+.login-proof span, .login-emergency { color: #C7E9FF; }
+.login-proof strong { color: #FFFFFF; }
+.login-icon, .login-brand .brand-mark { background: linear-gradient(145deg, #2563EB, #0EA5E9); box-shadow: 0 10px 24px rgba(14, 165, 233, .3); }
+.login-card { border-color: #C7DDF2; box-shadow: 0 22px 70px rgba(7, 31, 67, .16); }
+.login-card h2 { color: #0B2E59; }
+.login-card .eyebrow { color: #2563EB; }
+.field-label { color: #294B70; }
+.text-link { color: #2563EB; }
+.login-submit { background: linear-gradient(135deg, #2563EB, #0891B2); box-shadow: 0 10px 22px rgba(37, 99, 235, .22); }
+.login-footnote { color: #6B86A3; }

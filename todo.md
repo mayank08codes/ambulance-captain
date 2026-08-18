@@ -207,3 +207,9 @@
 - [x] Change the visible app name to “SavLife Captain”
 - [x] Place the ambulance logo on the left side of the app name in the brand header
 - [x] Update the sidebar, welcome/sign-in surfaces, and app configuration consistently
+
+## Colorful SavLife Captain welcome refinement
+
+- [x] Improve the welcome background with a richer blue, cyan, and violet color treatment
+- [x] Refine headline, supporting text, brand text, and sign-in typography colors for stronger contrast
+- [x] Validate desktop visual balance and readability
