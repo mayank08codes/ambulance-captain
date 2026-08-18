@@ -138,14 +138,15 @@ function App() {
     return () => window.clearInterval(timer);
   }, [tripStage]);
 
+  const nearestHospital = useMemo(() => [...hospitals].sort((a, b) => hospitalRecommendation(b, driverPosition).score - hospitalRecommendation(a, driverPosition).score)[0], [driverPosition.lat, driverPosition.lng]);
   const selectedDistance = useMemo(() => distanceKm(driverPosition, selectedHospital.location), [driverPosition, selectedHospital]);
   const selectedEta = Math.max(3, Math.round(selectedDistance * 4.2));
 
   if (!authenticated) return <Login onLogin={() => setAuthenticated(true)} />;
 
-  const acceptRequest = () => { setTripStage("otp"); setSection("requests"); notify("Request locked to you. Ask the passenger for the OTP."); };
+  const acceptRequest = () => { setSelectedHospital(nearestHospital); setTripStage("otp"); setSection("requests"); notify(`Request locked. Nearest suitable hospital: ${nearestHospital.name}. Ask the passenger for the OTP.`); };
   const verifyOtp = () => {
-    if (otp === "4826") { setTripStage("enroute"); setProgress(0); setSection("trip"); notify("Passenger verified. Navigation started automatically."); }
+    if (otp === "4826") { setSelectedHospital(nearestHospital); setTripStage("enroute"); setProgress(0); setSection("trip"); notify(`Passenger verified. Live route started to ${nearestHospital.name}.`); }
     else notify("Enter the demo OTP 4826.");
   };
   const completePayment = () => { setPaymentStatus("paid"); setTripStage("completed"); setSection("history"); notify("₹680 payment recorded and trip closed."); };
@@ -208,16 +209,35 @@ function MapView({ compact = false, position, hospital }: { compact?: boolean; p
   const driverMarkerRef = useRef<google.maps.Marker | null>(null);
   const hospitalMarkerRef = useRef<google.maps.Marker | null>(null);
   const directionsRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  const [mapState, setMapState] = useState<"loading" | "ready" | "fallback">("loading");
   const googleKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
 
   useEffect(() => {
-    if (!mapElement.current || !googleKey) return;
+    if (!mapElement.current || !googleKey) {
+      setMapState("fallback");
+      return;
+    }
     let disposed = false;
-    setOptions({ key: googleKey, v: "weekly", libraries: ["places"] });
+    const googleWindow = window as Window & { gm_authFailure?: () => void };
+    const previousAuthFailure = googleWindow.gm_authFailure;
+    googleWindow.gm_authFailure = () => {
+      setMapState("fallback");
+      previousAuthFailure?.();
+    };
+    setMapState("loading");
+    try {
+      setOptions({ key: googleKey, v: "weekly", libraries: ["places"] });
+    } catch {
+      setMapState("fallback");
+      return;
+    }
     Promise.all([importLibrary("maps"), importLibrary("routes"), importLibrary("places")]).then(() => {
       if (disposed || !mapElement.current) return;
       const googleApi = window.google;
-      if (!googleApi) return;
+      if (!googleApi) {
+        setMapState("fallback");
+        return;
+      }
       const driver = { lat: position.lat, lng: position.lng };
       const destination = { lat: hospital.location.lat, lng: hospital.location.lng };
       const map = new googleApi.maps.Map(mapElement.current, { center: driver, zoom: 13, mapTypeControl: false, streetViewControl: false, fullscreenControl: true, gestureHandling: "greedy" });
@@ -232,17 +252,34 @@ function MapView({ compact = false, position, hospital }: { compact?: boolean; p
       bounds.extend(driver);
       bounds.extend(destination);
       map.fitBounds(bounds, 48);
-    }).catch(() => undefined);
+      setMapState("ready");
+    }).catch(() => setMapState("fallback"));
     return () => {
       disposed = true;
       driverMarkerRef.current?.setMap(null);
       hospitalMarkerRef.current?.setMap(null);
       directionsRef.current?.setMap(null);
       mapRef.current = null;
+      if (googleWindow.gm_authFailure) googleWindow.gm_authFailure = previousAuthFailure;
     };
   }, [googleKey, position.lat, position.lng, hospital.name, hospital.location.lat, hospital.location.lng]);
 
-  return <div className={`leaflet-map google-map ${compact ? "compact" : ""}`} ref={mapElement}>{!googleKey && <div className="map-fallback">Google Maps key is not configured.</div>}</div>;
+  const minLat = Math.min(position.lat, hospital.location.lat) - 0.015;
+  const maxLat = Math.max(position.lat, hospital.location.lat) + 0.015;
+  const minLng = Math.min(position.lng, hospital.location.lng) - 0.015;
+  const maxLng = Math.max(position.lng, hospital.location.lng) + 0.015;
+  const fallbackMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(`${minLng},${minLat},${maxLng},${maxLat}`)}&layer=mapnik&marker=${position.lat},${position.lng}`;
+
+  return <div className={`leaflet-map google-map map-${mapState} ${compact ? "compact" : ""}`}>
+    <div className="google-map-canvas" ref={mapElement} />
+    {mapState !== "ready" && <div className="map-fallback live-map-fallback">
+      <iframe className="fallback-map-iframe" title="Live route map" src={fallbackMapUrl} loading="lazy" />
+      <div className="fallback-road road-one" /><div className="fallback-road road-two" /><div className="fallback-route" />
+      <div className="fallback-marker driver-marker"><Ambulance size={18} /><span>Live ambulance</span></div>
+      <div className="fallback-marker hospital-marker"><Hospital size={18} /><span>{hospital.name}</span></div>
+      <div className="fallback-map-card"><b>{mapState === "loading" ? "Loading live map" : "Live route preview"}</b><span>{mapState === "loading" ? "Connecting to Google Maps…" : "GPS route remains visible while the map service reconnects."}</span></div>
+    </div>}
+  </div>;
 }
 function Stat({ icon: Icon, label, value, detail }: { icon: typeof Truck; label: string; value: string; detail: string }) { return <div className="stat-card"><div className="stat-icon"><Icon size={18} /></div><span>{label}</span><strong>{value}</strong><small>{detail}</small></div>; }
 function Data({ label, value, tone }: { label: string; value: string; tone?: "red" }) { return <div><span className="data-label">{label}</span><strong className={tone === "red" ? "red-text" : ""}>{value}</strong></div>; }

@@ -254,3 +254,25 @@
 - [x] Keep request, OTP, live hospital routing, arrival, and payment flow usable without a Delhi location
 - [x] Validate and checkpoint the location-neutral workflow
 - [x] Reuse the existing configured Google Maps key without requesting a new key
+
+## Captain-style live map workflow
+
+- [ ] Make the active-trip map visibly persistent and usable
+- [ ] Add Captain-style request, online status, OTP, navigation, hospital, arrival, and payment emphasis
+- [ ] Validate the live map across request and active-trip states
+- [ ] Save a checkpoint for the Captain-style workflow update
+
+## Automatic nearest-hospital route start
+
+- [ ] Select the nearest suitable hospital from the captain's current GPS position
+- [ ] Start the active live route automatically after valid OTP verification
+- [ ] Show the selected hospital, route, distance, ETA, and arrival/payment transitions without an extra manual start step
+- [ ] Validate and checkpoint the automatic route-start workflow
+
+## Live map visibility and workflow stability
+
+- [x] Prevent the post-login React removeChild crash by isolating the Google Maps canvas
+- [x] Detect Google Maps authorization failures without blanking the Captain dashboard
+- [x] Show a real OpenStreetMap route surface with live ambulance and hospital markers as fallback
+- [x] Keep the map bounded inside the Rapido Captain-style operations workspace
+- [x] Validate TypeScript, tests, production build, sign-in, dashboard, and visible map fallback

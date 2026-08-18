@@ -121,8 +121,24 @@ table { width: 100%; border-collapse: collapse; text-align: left; } th { color: 
 @media (max-width: 850px) { body { min-width: 0; }.sidebar { width: 70px; flex-basis: 70px; padding-left: 10px; padding-right: 10px; }.brand { padding-left: 5px; }.brand > div:last-child, .online-card div, .nav-item span, .nav-item em, .driver-mini > div:not(.avatar), .driver-mini svg, .sidebar-bottom .nav-item span { display: none; }.online-card { justify-content: center; padding: 11px 5px; }.online-card .switch { display: none; }.nav-item { justify-content: center; padding: 0; }.driver-mini { justify-content: center; padding-left: 0; padding-right: 0; }.topbar { padding-left: 22px; padding-right: 22px; }.page-content { padding-left: 22px; padding-right: 22px; }.content-grid, .wide-grid, .profile-grid { grid-template-columns: 1fr; }.hero-row { align-items: start; gap: 18px; flex-direction: column; }.hero-metric { width: 100%; }.top-actions .live-pill { display: none; } }
 
 /* Live map and operational state additions */
-.leaflet-map { height: 310px; width: 100%; overflow: hidden; border: 1px solid #B7D6DF; border-radius: 12px; z-index: 0; }
+.leaflet-map { position: relative; height: 310px; width: 100%; overflow: hidden; border: 1px solid #B7D6DF; border-radius: 12px; z-index: 0; }
+.google-map-canvas { position: absolute; inset: 0; z-index: 1; }
+.google-map.map-loading .google-map-canvas, .google-map.map-fallback .google-map-canvas { visibility: hidden; }
+.google-map .live-map-fallback { z-index: 2; }
 .leaflet-map.compact { height: 220px; margin-top: 15px; }
+.map-fallback.live-map-fallback { position: absolute; inset: 0; overflow: hidden; background: linear-gradient(135deg, #dff6f7 0%, #eff8f5 46%, #f8f2df 100%); color: #102A43; }
+.fallback-map-iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; opacity: .88; filter: saturate(.9) contrast(1.02); z-index: 0; }
+.live-map-fallback > :not(.fallback-map-iframe) { z-index: 1; }
+.live-map-fallback::before, .live-map-fallback::after { content: ""; position: absolute; background: rgba(255,255,255,.72); box-shadow: 0 0 0 1px rgba(180,205,199,.28); }
+.live-map-fallback::before { width: 150%; height: 42px; left: -20%; top: 42%; transform: rotate(-17deg); }
+.live-map-fallback::after { width: 130%; height: 34px; left: -12%; top: 66%; transform: rotate(24deg); }
+.fallback-road { position: absolute; width: 12px; height: 150%; background: rgba(255,255,255,.56); box-shadow: 0 0 0 1px rgba(180,205,199,.24); }
+.road-one { left: 28%; top: -20%; transform: rotate(38deg); }.road-two { right: 22%; top: -18%; transform: rotate(-28deg); }
+.fallback-route { position: absolute; left: 30%; top: 25%; width: 45%; height: 48%; border: 5px solid #0F766E; border-left-color: transparent; border-bottom-color: transparent; border-radius: 50%; transform: rotate(28deg); filter: drop-shadow(0 2px 2px rgba(15,118,110,.22)); }
+.fallback-marker { position: absolute; z-index: 2; display: inline-flex; align-items: center; gap: 7px; padding: 8px 10px; color: #fff; border-radius: 999px; box-shadow: 0 7px 16px rgba(16,42,67,.2); font-size: 11px; font-weight: 800; white-space: nowrap; }
+.driver-marker { left: 17%; top: 28%; background: #1769E0; }.hospital-marker { right: 11%; bottom: 22%; background: #D64545; }
+.fallback-map-card { position: absolute; z-index: 3; left: 14px; bottom: 14px; display: grid; gap: 3px; max-width: 260px; padding: 10px 12px; background: rgba(255,255,255,.94); border: 1px solid rgba(180,205,199,.6); border-radius: 10px; box-shadow: 0 6px 20px rgba(16,42,67,.12); }
+.fallback-map-card b { font-size: 12px; }.fallback-map-card span { color: #627D98; font-size: 10px; line-height: 1.35; }
 .leaflet-container { font-family: 'Inter', system-ui, sans-serif; }
 .leaflet-driver-marker, .leaflet-hospital-marker { display: grid; place-items: center; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 5px 14px rgba(16,42,67,.25); text-align: center; font-weight: 900; }
 .leaflet-driver-marker { background: #0F766E; color: #fff; font-size: 16px; }
