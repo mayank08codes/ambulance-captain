@@ -138,7 +138,7 @@ function App() {
         if (next >= 100) {
           window.clearInterval(timer);
           setTripStage("payment");
-          setSection("payment");
+          setSection("dashboard");
           notify("Hospital arrival detected. Payment session opened automatically.");
         }
         return next;
@@ -153,12 +153,12 @@ function App() {
 
   if (!authenticated) return <Login onLogin={() => setAuthenticated(true)} />;
 
-  const acceptRequest = () => { setSelectedHospital(nearestHospital); setTripStage("otp"); setSection("requests"); notify(`Request locked. Nearest suitable hospital: ${nearestHospital.name}. Ask the passenger for the OTP.`); };
+  const acceptRequest = () => { setSelectedHospital(nearestHospital); setTripStage("otp"); setSection("dashboard"); notify(`Request locked. AI route review selected ${nearestHospital.name}. Ask the passenger for the OTP.`); };
   const verifyOtp = () => {
-    if (otp === "4826") { setSelectedHospital(nearestHospital); setTripStage("enroute"); setProgress(0); setSection("trip"); notify(`Passenger verified. Live route started to ${nearestHospital.name}.`); }
+    if (otp === "4826") { setSelectedHospital(nearestHospital); setTripStage("enroute"); setProgress(0); setSection("dashboard"); notify(`Passenger verified. Live route started to ${nearestHospital.name}.`); }
     else notify("Enter the demo OTP 4826.");
   };
-  const completePayment = () => { setPaymentStatus("paid"); setTripStage("completed"); setSection("history"); notify("₹680 payment recorded and trip closed."); };
+  const completePayment = () => { setPaymentStatus("paid"); setTripStage("completed"); setSection("dashboard"); notify("₹680 payment recorded and trip closed."); };
   const openHelp = () => notify("Support request opened. Dispatcher callback is available.");
 
   return <div className="app-shell">
@@ -171,9 +171,9 @@ function App() {
     <main className="main-area">
       <header className="topbar"><div className="mobile-menu"><Menu size={20} /></div><div><span className="eyebrow">LIVE OPERATIONS · GPS ENABLED</span><h1>{section === "dashboard" ? `Good morning, ${profile.name.split(" ")[0]}` : section === "payment" ? "Payment" : navItems.find((item) => item.id === section)?.label}</h1></div><div className="top-actions"><span className="live-pill"><span className="status-dot" /> {gpsStatus}</span><button className="icon-button" onClick={() => notify(notifications ? "You have 1 new dispatch alert." : "Notifications are paused.")}><Bell size={18} /></button><button className="top-avatar" onClick={() => setSection("profile")}>RK</button></div></header>
       <div className="page-content">
-        {section === "dashboard" && <Dashboard online={online} position={driverPosition} onOpenRequest={() => setSection("requests")} onViewTrip={() => setSection(tripStage === "incoming" ? "requests" : "trip")} onHistory={() => setSection("history")} />}
+        {section === "dashboard" && <UnifiedConsole online={online} stage={tripStage} otp={otp} setOtp={setOtp} position={driverPosition} hospital={selectedHospital} distance={selectedDistance} eta={selectedEta} progress={progress} gpsStatus={gpsStatus} paymentStatus={paymentStatus} onAccept={acceptRequest} onVerify={verifyOtp} onDecline={() => { setTripStage("incoming"); notify("Request returned to dispatch."); }} onArrive={() => { setProgress(100); setTripStage("payment"); notify("Arrival confirmed. Payment session opened automatically."); }} onPay={completePayment} onOpenHospitals={() => setSection("hospitals")} onHistory={() => setSection("history")} />}
         {section === "requests" && <Requests stage={tripStage} otp={otp} setOtp={setOtp} onAccept={acceptRequest} onVerify={verifyOtp} onDecline={() => { setTripStage("incoming"); setSection("dashboard"); notify("Request returned to dispatch."); }} driverPosition={driverPosition} selectedHospital={selectedHospital} />}
-        {section === "trip" && <ActiveTrip stage={tripStage} hospital={selectedHospital} position={driverPosition} progress={progress} distance={selectedDistance} eta={selectedEta} gpsStatus={gpsStatus} onHospitals={() => setSection("hospitals")} onArrive={() => { setProgress(100); setTripStage("payment"); setSection("payment"); notify("Arrival confirmed. Payment session opened automatically."); }} />}
+        {section === "trip" && <ActiveTrip stage={tripStage} hospital={selectedHospital} position={driverPosition} progress={progress} distance={selectedDistance} eta={selectedEta} gpsStatus={gpsStatus} onHospitals={() => setSection("hospitals")} onArrive={() => { setProgress(100); setTripStage("payment"); setSection("dashboard"); notify("Arrival confirmed. Payment session opened automatically."); }} />}
         {section === "hospitals" && <Hospitals selected={selectedHospital} onSelect={setSelectedHospital} position={driverPosition} onStart={() => { setTripStage("enroute"); setSection("trip"); notify(`Navigation started to ${selectedHospital.name}.`); }} />}
         {section === "history" && <History paymentStatus={paymentStatus} />}
         {section === "profile" && <Profile profile={profile} setProfile={setProfile} online={online} onToggle={() => setOnline(!online)} editing={editingProfile} setEditing={setEditingProfile} notifications={notifications} setNotifications={setNotifications} notify={notify} />}
@@ -185,6 +185,117 @@ function App() {
     </main>
     {notice && <div className="toast"><BadgeCheck size={18} />{notice}</div>}
   </div>;
+}
+
+function UnifiedConsole({
+  online,
+  stage,
+  otp,
+  setOtp,
+  position,
+  hospital,
+  distance,
+  eta,
+  progress,
+  gpsStatus,
+  paymentStatus,
+  onAccept,
+  onVerify,
+  onDecline,
+  onArrive,
+  onPay,
+  onOpenHospitals,
+  onHistory,
+}: {
+  online: boolean;
+  stage: TripStage;
+  otp: string;
+  setOtp: (value: string) => void;
+  position: Coordinates;
+  hospital: HospitalOption;
+  distance: number;
+  eta: number;
+  progress: number;
+  gpsStatus: string;
+  paymentStatus: "pending" | "paid";
+  onAccept: () => void;
+  onVerify: () => void;
+  onDecline: () => void;
+  onArrive: () => void;
+  onPay: () => void;
+  onOpenHospitals: () => void;
+  onHistory: () => void;
+}) {
+  const phase = stage === "incoming" ? "NEW BOOKING" : stage === "otp" ? "OTP VERIFICATION" : stage === "enroute" ? "LIVE NAVIGATION" : stage === "payment" ? "ARRIVAL & PAYMENT" : "TRIP COMPLETE";
+  const title = stage === "incoming" ? "Review the next ambulance booking" : stage === "otp" ? "Verify passenger to start routing" : stage === "enroute" ? "Live route to recommended care" : stage === "payment" ? "Arrival detected — close the trip" : "Trip closed successfully";
+  return (
+    <div className="unified-console">
+      <section className="console-header">
+        <div>
+          <span className="eyebrow">ONE-PAGE DISPATCH CONSOLE · {phase}</span>
+          <h2>{title}</h2>
+          <p className="muted">Booking, hospital intelligence, OTP, live map, ETA, and payment remain in one workspace.</p>
+        </div>
+        <div className="console-status">
+          <span className={`status-dot ${online ? "" : "offline"}`} />
+          <b>{online ? "Available for dispatch" : "Offline"}</b>
+          <small>{gpsStatus}</small>
+        </div>
+      </section>
+      <div className="console-grid">
+        <section className="panel console-map-panel">
+          <div className="map-head">
+            <span><MapPin size={16} /> {stage === "enroute" || stage === "payment" ? "Live route workspace" : "Booking and hospital preview"}</span>
+            <span className="traffic"><span className="status-dot" /> {gpsStatus}</span>
+          </div>
+          <MapView position={position} hospital={hospital} />
+          <div className="console-map-stats">
+            <Data label="GPS position" value={`${position.lat.toFixed(3)}, ${position.lng.toFixed(3)}`} />
+            <Data label="Hospital distance" value={formatDistance(distance)} />
+            <Data label="ETA" value={progress >= 100 ? "Arrived" : `${eta} min`} />
+          </div>
+        </section>
+        <aside className="panel console-action-panel">
+          <div className="console-stepper">
+            <span className={stage !== "incoming" ? "done" : "active"}>1 <small>Booking</small></span>
+            <span className={stage === "otp" ? "active" : stage === "incoming" ? "" : "done"}>2 <small>OTP</small></span>
+            <span className={stage === "enroute" ? "active" : stage === "payment" || stage === "completed" ? "done" : ""}>3 <small>Route</small></span>
+            <span className={stage === "payment" ? "active" : stage === "completed" ? "done" : ""}>4 <small>Payment</small></span>
+          </div>
+          {stage === "incoming" && <>
+            <div className="console-alert"><Bell size={20} /><div><b>Individual ambulance booking</b><span>One available captain can accept this high-priority request.</span></div></div>
+            <div className="console-request"><span className="eyebrow">REQUEST AC-1048 · LIVE</span><h3>Patient transfer request</h3><p className="muted">Pickup is {formatDistance(distanceKm(position, REQUEST_PICKUP))} from your live GPS position.</p><div className="console-detail-grid"><Data label="Patient" value="Aarav Mehta" /><Data label="Urgency" value="High" /><Data label="Service" value="Basic Life Support" /><Data label="Payment" value="UPI · ₹680 est." /></div></div>
+            <div className="ai-decision"><Hospital size={19} /><div><b>AI hospital review ready</b><span>Ranking uses distance, ETA, emergency capability, open status, capacity, and rating.</span></div></div>
+            <button className="primary-button full" onClick={onAccept}><Check size={17} /> Accept and lock request</button>
+            <button className="secondary-button full" onClick={onDecline}><X size={17} /> Decline request</button>
+          </>}
+          {stage === "otp" && <>
+            <div className="console-alert teal-alert"><BadgeCheck size={20} /><div><b>Request accepted and locked</b><span>Recommended hospital: {hospital.name} · {formatDistance(distance)} · {eta} min.</span></div></div>
+            <label className="field-label">Passenger OTP</label>
+            <input className="otp-field" value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="4826" inputMode="numeric" />
+            <span className="helper">Ask the passenger for the 4-digit code. Demo code: 4826.</span>
+            <button className="primary-button full" onClick={onVerify}><Navigation size={17} /> Verify OTP and start live map</button>
+          </>}
+          {stage === "enroute" && <>
+            <div className="ai-decision"><Route size={19} /><div><b>AI route decision active</b><span>{hospital.name} balances ETA, emergency intake, capacity, and rating.</span></div></div>
+            <div className="console-destination"><Hospital size={19} /><div><b>{hospital.name}</b><span>{formatDistance(distance)} · {eta} min · {hospital.emergencyLevel}</span><small>Updates from live GPS as the ambulance moves.</small></div></div>
+            <button className="secondary-button full" onClick={onOpenHospitals}><Hospital size={17} /> Compare nearby hospitals</button>
+            <button className="primary-button full" onClick={onArrive}><MapPin size={17} /> Confirm hospital arrival</button>
+          </>}
+          {stage === "payment" && <>
+            <div className="console-alert teal-alert"><Check size={20} /><div><b>Hospital arrival detected</b><span>Payment session opened automatically for {hospital.name}.</span></div></div>
+            <div className="fare-total"><span>Total fare</span><strong>₹680</strong></div>
+            <div className="console-detail-grid"><Data label="Base trip" value="₹520" /><Data label="Emergency service" value="₹100" /><Data label="Platform fee" value="₹60" /><Data label="Method" value="UPI" /></div>
+            <button className="primary-button full" onClick={onPay} disabled={paymentStatus === "paid"}><CreditCard size={17} /> {paymentStatus === "paid" ? "Payment completed" : "Confirm payment received"}</button>
+          </>}
+          {stage === "completed" && <>
+            <div className="console-alert teal-alert"><Check size={20} /><div><b>Trip completed</b><span>Payment recorded and the ambulance is ready for the next dispatch.</span></div></div>
+            <button className="primary-button full" onClick={onHistory}><Clock3 size={17} /> View trip history</button>
+          </>}
+        </aside>
+      </div>
+    </div>
+  );
 }
 
 function Dashboard({ online, position, onOpenRequest, onViewTrip, onHistory }: { online: boolean; position: Coordinates; onOpenRequest: () => void; onViewTrip: () => void; onHistory: () => void }) {

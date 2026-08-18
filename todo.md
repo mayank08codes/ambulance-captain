@@ -284,3 +284,11 @@
 - [x] Keep distance in kilometers and ETA in realistic minutes with clear calculation context
 - [x] Upgrade the dashboard with richer live-operation status, hospital comparison, route intelligence, and operational detail
 - [x] Validate the advanced desktop workflow and save a checkpoint
+
+## Unified one-page Captain operations console
+
+- [x] Keep incoming booking, passenger details, acceptance, OTP, hospital recommendation, map, ETA, arrival, and payment visible in one primary workspace
+- [x] Remove the need to switch sidebar icons for the core booking-to-payment journey
+- [x] Add a clear AI-assisted hospital decision panel with explainable reasons and confidence context
+- [x] Make the map and route update inline immediately after valid OTP verification
+- [x] Validate the complete one-page workflow and preserve secondary pages only for history/profile/settings
