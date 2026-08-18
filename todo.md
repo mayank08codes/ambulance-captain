@@ -154,3 +154,16 @@
 - [x] Update the welcome headline with a meaningful ambulance-driver mission statement
 - [x] Validate logo readability and branding consistency across sizes
 - [ ] Save a checkpoint for the brand refresh
+
+## Colorful welcome background
+
+- [x] Add layered navy, teal, cyan, and coral background colors to the welcome page
+- [x] Preserve readable contrast for the logo, headline, trust items, and sign-in card
+- [x] Validate the colorful background and save a checkpoint
+
+## RescueRoute identity
+
+- [x] Rename visible app branding from Ambulance Captain to RescueRoute
+- [x] Update the app configuration display name to RescueRoute
+- [x] Ensure the logo clearly depicts an ambulance rather than an abstract route mark
+- [x] Apply RescueRoute branding consistently to the welcome page, login card, and app surfaces
