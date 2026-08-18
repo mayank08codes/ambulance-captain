@@ -24,3 +24,12 @@
 - [x] Preserve desktop access to requests, OTP, maps, hospitals, routes, payments, history, and profile
 - [ ] Verify responsive behavior at desktop and mobile viewport sizes
 - [ ] Save a new checkpoint for the desktop-enabled project
+
+## Desktop web rebuild
+
+- [x] Rebuild the driver experience as a proper desktop-first web application
+- [x] Add desktop web navigation for dashboard, requests, active trip, hospitals, routes, payments, history, and profile
+- [x] Add desktop web interactive request, OTP, trip, hospital, route, and payment panels
+- [x] Add responsive behavior for smaller browser widths without presenting it as a phone-only app
+- [x] Run web application tests and preview verification
+- [ ] Save a checkpoint for the desktop web application
