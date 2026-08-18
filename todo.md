@@ -346,6 +346,13 @@
 - [x] Keep animation synchronized with trip progress and stop it on arrival/payment
 - [x] Validate the animated map through the OTP-to-navigation flow
 
+## Readable driver location
+
+- [x] Replace visible latitude/longitude output with a readable driver place name or address
+- [x] Keep internal coordinates available for distance, route, and map calculations
+- [x] Provide a clear fallback label when reverse geocoding is unavailable
+- [x] Validate the location display in the dashboard and active-trip panels
+
 ## Preserve previous console structure
 
 - [x] Keep the existing booking, OTP, route, ambulance animation, and payment layout unchanged

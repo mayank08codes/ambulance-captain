@@ -145,7 +145,7 @@ function App() {
   const [notice, setNotice] = useState("");
   const [driverPosition, setDriverPosition] = useState<Coordinates>(DEMO_DRIVER);
   const [gpsStatus, setGpsStatus] = useState("Waiting for live browser GPS");
-  const [driverPlace, setDriverPlace] = useState("Current GPS position");
+  const [driverPlace, setDriverPlace] = useState("Driver location unavailable · GPS active");
   const [progress, setProgress] = useState(0);
   const [paymentStatus, setPaymentStatus] = useState<"pending" | "paid">("pending");
   const [profile, setProfile] = useState<DriverProfile>({ name: "Ravi Kumar", phone: "+91 98765 42041", vehicle: "BLS-2041", email: "ravi.kumar@savlife.example", license: "DL-0420-1188", vehicleModel: "Tata Winger · BLS ambulance", experience: "6 years", emergencyContact: "SavLife Dispatch · 112" });
@@ -221,14 +221,14 @@ function App() {
 
   useEffect(() => {
     if (!authenticated || !online) {
-      setDriverPlace("Current GPS position");
+      setDriverPlace("Driver location unavailable · GPS active");
       return;
     }
     let cancelled = false;
     const timer = window.setTimeout(async () => {
       const googleKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
       if (!googleKey) {
-        setDriverPlace(`GPS ${driverPosition.lat.toFixed(4)}, ${driverPosition.lng.toFixed(4)}`);
+        setDriverPlace("Readable address pending · GPS active");
         return;
       }
       try {
@@ -239,16 +239,13 @@ function App() {
           if (cancelled) return;
           const best = results?.[0];
           if (status === "OK" && best) {
-            const components = best.address_components ?? [];
-            const locality = components.find((component) => component.types.includes("locality"))?.long_name;
-            const area = components.find((component) => component.types.includes("sublocality"))?.long_name;
-            setDriverPlace([area, locality].filter(Boolean).join(", ") || best.formatted_address || "Current GPS position");
+            setDriverPlace(best.formatted_address || "Readable address pending · GPS active");
           } else {
-            setDriverPlace("Current GPS position");
+            setDriverPlace("Driver location unavailable · GPS active");
           }
         });
       } catch {
-        if (!cancelled) setDriverPlace("Current GPS position");
+        if (!cancelled) setDriverPlace("Driver location unavailable · GPS active");
       }
     }, 450);
     return () => {
