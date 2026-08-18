@@ -167,3 +167,11 @@
 - [x] Update the app configuration display name to RescueRoute
 - [x] Ensure the logo clearly depicts an ambulance rather than an abstract route mark
 - [x] Apply RescueRoute branding consistently to the welcome page, login card, and app surfaces
+
+## Red ambulance-car logo update
+
+- [x] Generate a recognizable ambulance-car logo with a red emergency body
+- [x] Replace the current logo in the welcome page, sign-in card, and navigation brand
+- [x] Update favicon and app configuration logo references
+- [x] Validate red logo contrast and small-size readability
+- [ ] Save a checkpoint for the logo update
