@@ -141,3 +141,16 @@
 
 - [x] Change the primary login action label to exactly “Sign in”
 - [x] Validate that the simplified button still submits the login flow correctly
+
+## Welcome headline refinement
+
+- [x] Replace the generic welcome headline with a specific ambulance-driver mission statement
+- [x] Validate the updated headline in the welcome page and save a checkpoint
+
+## Brand identity refresh
+
+- [x] Generate a distinctive Ambulance Captain logo with emergency and route-care symbolism
+- [x] Replace the simple logo across the web welcome page and app assets
+- [x] Update the welcome headline with a meaningful ambulance-driver mission statement
+- [x] Validate logo readability and branding consistency across sizes
+- [ ] Save a checkpoint for the brand refresh
