@@ -259,9 +259,11 @@ function App() {
 
   useEffect(() => {
     if (tripStage !== "enroute") return;
+    // Fast demo playback: the marker starts immediately after OTP and reaches
+    // the selected hospital quickly, making the route-to-payment handoff visible.
     const timer = window.setInterval(() => {
       setProgress((current) => {
-        const next = Math.min(current + 12, 100);
+        const next = Math.min(current + 18, 100);
         if (next >= 100) {
           window.clearInterval(timer);
           setTripStage("payment");
@@ -270,7 +272,7 @@ function App() {
         }
         return next;
       });
-    }, 1800);
+    }, 450);
     return () => window.clearInterval(timer);
   }, [tripStage]);
 
@@ -282,7 +284,7 @@ function App() {
 
   const acceptRequest = () => { setSelectedHospital(nearestHospital); setTripStage("otp"); setSection("dashboard"); void requestAiHospitalReview(); notify(`Request locked. Reviewing nearby hospitals from ${driverPlace}. Ask the passenger for the OTP.`); };
   const verifyOtp = () => {
-    if (otp === "4826") { const destination = hospitals.find((item) => item.name === aiDecision?.selectedHospital) ?? selectedHospital ?? nearestHospital; setSelectedHospital(destination); setTripStage("enroute"); setProgress(0); setSection("dashboard"); void requestAiHospitalReview(); notify(`Passenger verified. Live route started to ${destination.name}.`); }
+    if (otp === "4826") { const destination = hospitals.find((item) => item.name === aiDecision?.selectedHospital) ?? selectedHospital ?? nearestHospital; setSelectedHospital(destination); setTripStage("enroute"); setProgress(6); setSection("dashboard"); void requestAiHospitalReview(); notify(`Passenger verified. Ambulance moving to ${destination.name}; payment will open after arrival.`); }
     else notify("Enter the demo OTP 4826.");
   };
   const completePayment = () => { setPaymentStatus("paid"); setTripStage("completed"); setSection("dashboard"); notify("₹680 payment recorded and trip closed."); };

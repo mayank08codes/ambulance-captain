@@ -346,6 +346,13 @@
 - [x] Keep animation synchronized with trip progress and stop it on arrival/payment
 - [x] Validate the animated map through the OTP-to-navigation flow
 
+## Fast post-OTP route and payment handoff
+
+- [x] Start ambulance movement immediately after OTP 4826 verification
+- [x] Advance the ambulance marker quickly along the connected route to the hospital
+- [x] Automatically detect route completion and open the payment stage
+- [x] Validate OTP-to-moving-marker-to-payment without extra manual steps
+
 ## Patient details and driver income
 
 - [x] Add patient condition/disease, contact phone, allergies, and emergency notes to the booking detail
