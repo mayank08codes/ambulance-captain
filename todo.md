@@ -213,3 +213,10 @@
 - [x] Improve the welcome background with a richer blue, cyan, and violet color treatment
 - [x] Refine headline, supporting text, brand text, and sign-in typography colors for stronger contrast
 - [x] Validate desktop visual balance and readability
+
+## Standalone blue ambulance icon correction
+
+- [x] Replace the broken-looking logo image with a clearly visible simple ambulance illustration
+- [x] Keep the ambulance illustration inside a blue square icon
+- [x] Remove all SavLife Captain text from inside the square icon
+- [x] Keep SavLife Captain separate beside the icon and validate the welcome/sign-in surfaces

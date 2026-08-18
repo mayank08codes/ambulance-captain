@@ -155,7 +155,9 @@ table { width: 100%; border-collapse: collapse; text-align: left; } th { color: 
 @media (max-width: 760px) { body { min-width: 0; }.sidebar { width: 70px; flex-basis: 70px; padding: 20px 10px; }.brand { padding: 0 4px 24px; }.brand > div:last-child, .online-card > div, .nav-item span, .nav-item em, .driver-mini > div:not(.avatar), .driver-mini svg { display: none; }.brand-mark { margin: auto; }.online-card { justify-content: center; padding: 10px 4px; }.switch { display: none; }.nav-item { justify-content: center; padding: 0; }.driver-mini { justify-content: center; }.topbar { padding: 18px 20px; }.top-actions .live-pill { display: none; }.page-content { padding: 24px 20px 42px; }.stat-grid { grid-template-columns: repeat(2, 1fr); }.content-grid, .wide-grid, .hospital-layout, .profile-grid, .trip-layout { grid-template-columns: 1fr; }.hero-row, .trip-toolbar, .page-heading { align-items: start; flex-direction: column; gap: 18px; }.hero-metric { width: 100%; }.help-grid { grid-template-columns: 1fr; }.login-visual-copy h1 { font-size: 44px; }.login-proof { gap: 18px; }.login-card { width: calc(100% - 34px); padding: 28px; }.hospital-detail-grid { grid-template-columns: repeat(2, 1fr); } }
 
 /* Refreshed Ambulance Captain mark */
+.brand-mark { color: #FFFFFF; background: linear-gradient(145deg, #2563EB, #0EA5E9); box-shadow: 0 10px 24px rgba(14, 165, 233, .3); }
 .brand-mark img { width: 28px; height: 28px; display: block; object-fit: contain; }
+.brand-mark svg, .login-icon svg { display: block; color: #FFFFFF; }
 .login-brand .brand-mark { width: 48px; height: 48px; border-radius: 14px; }
 .login-brand .brand-mark img { width: 36px; height: 36px; }
 .login-icon { overflow: hidden; }
