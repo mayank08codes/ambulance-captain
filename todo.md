@@ -345,3 +345,13 @@
 - [x] Add visible motion feedback in the fallback map and Google Maps marker
 - [x] Keep animation synchronized with trip progress and stop it on arrival/payment
 - [x] Validate the animated map through the OTP-to-navigation flow
+
+## Patient details and driver income
+
+- [x] Add patient condition/disease, contact phone, allergies, and emergency notes to the booking detail
+- [x] Keep driver personal details out of the booking page and show them only in Driver profile
+- [x] Move driver income and personal financial metrics to the Earnings section
+- [x] Keep sensitive patient information clearly labeled for captain-only operational use
+- [x] Add trip earnings and captain income breakdown to the payment and earnings surfaces
+- [x] Connect completed trip fare to the driver income summary
+- [x] Validate patient details and earnings through the booking-to-payment flow
