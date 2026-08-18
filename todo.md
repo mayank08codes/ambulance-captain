@@ -276,3 +276,11 @@
 - [x] Show a real OpenStreetMap route surface with live ambulance and hospital markers as fallback
 - [x] Keep the map bounded inside the Rapido Captain-style operations workspace
 - [x] Validate TypeScript, tests, production build, sign-in, dashboard, and visible map fallback
+
+## Advanced data accuracy and operations UX
+
+- [x] Audit every displayed hospital distance, ETA, route duration, and unit label for consistency
+- [x] Replace hardcoded-looking hospital metrics with calculations derived from the active driver and hospital coordinates
+- [x] Keep distance in kilometers and ETA in realistic minutes with clear calculation context
+- [x] Upgrade the dashboard with richer live-operation status, hospital comparison, route intelligence, and operational detail
+- [x] Validate the advanced desktop workflow and save a checkpoint
