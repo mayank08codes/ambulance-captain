@@ -379,9 +379,9 @@
 - [x] Correct hospital phone data and remove unverified contact numbers from visible UI
 - [x] Validate hospital contact display across hospital cards and selected route details
 
-- [ ] Commit the README update to the connected GitHub repository
-- [ ] Document the rest-or-continue safety prompt and dispatch transfer behavior in README.md
-- [ ] Document the technology used for availability state, trip state, and request handoff
+- [x] Commit the README update to the connected GitHub repository
+- [x] Document the rest-or-continue safety prompt and dispatch transfer behavior in README.md
+- [x] Document the technology used for availability state, trip state, and request handoff
 
 
 

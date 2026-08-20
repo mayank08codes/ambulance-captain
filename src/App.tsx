@@ -148,6 +148,8 @@ function App() {
   const [bookingAlertOpen, setBookingAlertOpen] = useState(false);
   const [nightMode, setNightMode] = useState(false);
   const [restDue, setRestDue] = useState(false);
+  const [restPromptOpen, setRestPromptOpen] = useState(false);
+  const [completedTrips, setCompletedTrips] = useState(0);
   const [audioPingSeconds, setAudioPingSeconds] = useState(0);
   const [audioVerified, setAudioVerified] = useState(false);
   const [equipmentChecklist, setEquipmentChecklist] = useState<EquipmentChecklist>({ oxygen: false, stretcher: false, defibrillator: false });
@@ -318,7 +320,37 @@ function App() {
     else notify("Enter OTP 4826 or complete the 5-second patient audio ping.");
   };
   const startAudioPing = () => { setAudioVerified(false); setAudioPingSeconds(1); notify("Patient audio ping started. Hold for 5 seconds to verify."); };
-  const completePayment = () => { setPaymentStatus("paid"); setTripStage("completed"); setRestDue(true); setSection("dashboard"); notify("₹680 payment recorded and trip closed. Take a safety rest before another emergency run."); };
+  const completePayment = () => {
+    setPaymentStatus("paid");
+    setTripStage("completed");
+    setRestDue(true);
+    setCompletedTrips((current) => current + 1);
+    setRestPromptOpen(true);
+    setSection("dashboard");
+    notify("₹680 payment recorded. Choose whether to rest or continue for the next request.");
+  };
+  const continueDriving = () => {
+    setRestPromptOpen(false);
+    setRestDue(false);
+    setOnline(true);
+    setPaymentStatus("pending");
+    setTripStage("incoming");
+    setOtp("");
+    setAudioVerified(false);
+    setAudioPingSeconds(0);
+    setSection("dashboard");
+    window.setTimeout(() => setBookingAlertOpen(true), 350);
+    notify("You are staying online. The next emergency request is arriving now.");
+  };
+  const takeSafetyRest = () => {
+    setRestPromptOpen(false);
+    setRestDue(true);
+    setOnline(false);
+    setTripStage("incoming");
+    setPaymentStatus("pending");
+    setBookingAlertOpen(false);
+    notify("Request transferred to dispatch. Another available ambulance can receive it while you take a safety rest.");
+  };
   const openHelp = () => notify("Support request opened. Dispatcher callback is available.");
   const checklistComplete = Object.values(equipmentChecklist).every(Boolean);
   const toggleAvailability = () => {
@@ -364,6 +396,7 @@ function App() {
       </div>
     </main>
     {readinessOpen && authenticated && <ReadinessModal checklist={equipmentChecklist} setChecklist={setEquipmentChecklist} onConfirm={confirmReadiness} onClose={() => setReadinessOpen(false)} />}
+    {restPromptOpen && authenticated && <RestPromptModal completedTrips={completedTrips} onRest={takeSafetyRest} onContinue={continueDriving} />}
     {bookingAlertOpen && authenticated && online && tripStage === "incoming" && <BookingAlertModal onAccept={acceptRequest} onDecline={() => { setBookingAlertOpen(false); notify("Emergency request returned to dispatch."); }} /> }
     {notice && <div className="toast"><BadgeCheck size={18} />{notice}</div>}
   </div>;
@@ -599,6 +632,10 @@ function MapView({ compact = false, position, hospital, progress = 0, moving = f
   </div>;
 }
 function Stat({ icon: Icon, label, value, detail }: { icon: typeof Truck; label: string; value: string; detail: string }) { return <div className="stat-card"><div className="stat-icon"><Icon size={18} /></div><span>{label}</span><strong>{value}</strong><small>{detail}</small></div>; }
+function RestPromptModal({ completedTrips, onRest, onContinue }: { completedTrips: number; onRest: () => void; onContinue: () => void }) {
+  return <div className="modal-backdrop"><section className="rest-modal" role="dialog" aria-modal="true" aria-labelledby="rest-title"><div className="panel-icon teal"><Clock3 size={22} /></div><span className="eyebrow">CAPTAIN SAFETY CHECK</span><h2 id="rest-title">Do you want to take a rest?</h2><p className="muted">Payment is complete after {completedTrips} emergency {completedTrips === 1 ? "run" : "runs"}. Take a short safety break before accepting another high-stress request, or continue if you are fit to drive.</p><div className="rest-status"><ShieldCheck size={18} /><span>Choose Rest to go offline, or Continue to receive the next emergency request.</span></div><div className="modal-actions"><button className="secondary-button" onClick={onRest}>Take a safety rest</button><button className="primary-button" onClick={onContinue}>Continue driving <ArrowRight size={17} /></button></div></section></div>;
+}
+
 function BookingAlertModal({ onAccept, onDecline }: { onAccept: () => void; onDecline: () => void }) {
   return <div className="modal-backdrop"><section className="booking-alert-modal" role="alertdialog" aria-modal="true" aria-labelledby="booking-alert-title"><div className="alert-pulse"><Bell size={22} /></div><span className="eyebrow">NEW EMERGENCY REQUEST · NOW</span><h2 id="booking-alert-title">Urgent chest-pain response</h2><p className="muted">A nearby patient needs immediate ambulance assistance. Verify the passenger by OTP before the live hospital route starts.</p><div className="alert-detail-grid"><Data label="Patient" value="Aarav Mehta · conscious" /><Data label="Pickup" value="2.1 km away" /><Data label="Priority" value="High · cardiac" tone="red" /></div><div className="modal-actions"><button className="secondary-button" onClick={onDecline}>Decline request</button><button className="primary-button" onClick={onAccept}>Accept & verify OTP <ArrowRight size={17} /></button></div></section></div>;
 }
