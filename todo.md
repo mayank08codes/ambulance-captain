@@ -346,6 +346,17 @@
 - [x] Keep animation synchronized with trip progress and stop it on arrival/payment
 - [x] Validate the animated map through the OTP-to-navigation flow
 
+## Live map and advanced ambulance operations
+
+- [x] Use the validated Google Maps key for live maps, Places, reverse geocoding, and directions
+- [x] Add a pre-shift checklist for oxygen level, stretcher sanitation, and defibrillator readiness
+- [x] Add an incoming emergency booking popup and patient verification before active dispatch
+- [ ] Add cancellation handling with a nearby next-request option
+- [x] Add AI hospital ranking from driver-relative distance, ETA, capacity, ratings, and emergency capability
+- [x] Add exact ER entrance or ambulance-dock guidance for selected hospitals
+- [x] Add night-visibility mode and mandatory rest prompts after consecutive emergency runs
+- [ ] Validate the complete booking-to-OTP-to-hospital-to-payment workflow with the new safety controls
+
 ## Readable driver location
 
 - [x] Replace visible latitude/longitude output with a readable driver place name or address

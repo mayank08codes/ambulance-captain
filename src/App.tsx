@@ -31,6 +31,7 @@ type Section = "dashboard" | "requests" | "trip" | "hospitals" | "history" | "pr
 type TripStage = "incoming" | "otp" | "enroute" | "arrived" | "payment" | "completed";
 type Coordinates = { lat: number; lng: number };
 type DriverProfile = { name: string; phone: string; vehicle: string; email: string; license: string; vehicleModel: string; experience: string; emergencyContact: string };
+type EquipmentChecklist = { oxygen: boolean; stretcher: boolean; defibrillator: boolean };
 
 type AiHospitalDecision = {
   selectedHospital: string;
@@ -51,6 +52,7 @@ type HospitalOption = {
   openNow: boolean;
   address: string;
   phone: string;
+  erEntrance: string;
   tag: string;
   feedback: string;
   reviewHighlight: string;
@@ -66,9 +68,9 @@ function validCoordinates(value: Coordinates): Coordinates {
     : DEMO_DRIVER;
 }
 const hospitals: HospitalOption[] = [
-  { name: "Central Emergency Hospital", rating: 4.8, reviews: 1240, beds: "ER available", capacity: 82, speciality: "Emergency, trauma, ICU", emergencyLevel: "Level 1 trauma", openNow: true, address: "Emergency District · Main Avenue", phone: "+1 212 410 2200", tag: "Best overall", feedback: "Fast triage and consistently calm emergency teams", reviewHighlight: "Patients praise short intake times and clear updates", location: { lat: 40.735, lng: -73.98 } },
-  { name: "Riverside Medical Center", rating: 4.6, reviews: 864, beds: "Cardiac unit", capacity: 64, speciality: "Cardiac, emergency, NICU", emergencyLevel: "Level 2 trauma", openNow: true, address: "22 Riverside Drive · Medical Quarter", phone: "+1 212 433 8800", tag: "Top rated", feedback: "Strong cardiac response and family communication", reviewHighlight: "Feedback highlights attentive nurses and clean facilities", location: { lat: 40.731, lng: -73.989 } },
-  { name: "Northpoint General Hospital", rating: 4.4, reviews: 702, beds: "Trauma centre", capacity: 46, speciality: "Trauma, orthopaedics, ER", emergencyLevel: "Level 1 trauma", openNow: true, address: "8 Northpoint Road · Civic Medical Zone", phone: "+1 212 455 7711", tag: "24/7 intake", feedback: "Reliable trauma intake with specialist coverage", reviewHighlight: "Drivers report dependable handover and 24/7 reception", location: { lat: 40.699, lng: -74.012 } },
+  { name: "Central Emergency Hospital", rating: 4.8, reviews: 1240, beds: "ER available", capacity: 82, speciality: "Emergency, trauma, ICU", emergencyLevel: "Level 1 trauma", openNow: true, address: "Emergency District · Main Avenue", phone: "+1 212 410 2200", erEntrance: "Ambulance Dock A · Emergency Bay", tag: "Best overall", feedback: "Fast triage and consistently calm emergency teams", reviewHighlight: "Patients praise short intake times and clear updates", location: { lat: 40.735, lng: -73.98 } },
+  { name: "Riverside Medical Center", rating: 4.6, reviews: 864, beds: "Cardiac unit", capacity: 64, speciality: "Cardiac, emergency, NICU", emergencyLevel: "Level 2 trauma", openNow: true, address: "22 Riverside Drive · Medical Quarter", phone: "+1 212 433 8800", erEntrance: "East ER Ramp · Cardiac Intake", tag: "Top rated", feedback: "Strong cardiac response and family communication", reviewHighlight: "Feedback highlights attentive nurses and clean facilities", location: { lat: 40.731, lng: -73.989 } },
+  { name: "Northpoint General Hospital", rating: 4.4, reviews: 702, beds: "Trauma centre", capacity: 46, speciality: "Trauma, orthopaedics, ER", emergencyLevel: "Level 1 trauma", openNow: true, address: "8 Northpoint Road · Civic Medical Zone", phone: "+1 212 455 7711", erEntrance: "Trauma Gate 2 · Ambulance Ramp", tag: "24/7 intake", feedback: "Reliable trauma intake with specialist coverage", reviewHighlight: "Drivers report dependable handover and 24/7 reception", location: { lat: 40.699, lng: -74.012 } },
 ];
 
 const navItems: { id: Section; label: string; icon: typeof LayoutDashboard }[] = [
@@ -140,6 +142,11 @@ function App() {
   const [section, setSection] = useState<Section>("dashboard");
   const [tripStage, setTripStage] = useState<TripStage>("incoming");
   const [online, setOnline] = useState(true);
+  const [readinessOpen, setReadinessOpen] = useState(true);
+  const [bookingAlertOpen, setBookingAlertOpen] = useState(false);
+  const [nightMode, setNightMode] = useState(false);
+  const [restDue, setRestDue] = useState(false);
+  const [equipmentChecklist, setEquipmentChecklist] = useState<EquipmentChecklist>({ oxygen: false, stretcher: false, defibrillator: false });
   const [otp, setOtp] = useState("");
   const [selectedHospital, setSelectedHospital] = useState(hospitals[0]);
   const [notice, setNotice] = useState("");
@@ -279,18 +286,50 @@ function App() {
 
   if (!authenticated) return <Login onLogin={() => setAuthenticated(true)} />;
 
-  const acceptRequest = () => { setSelectedHospital(nearestHospital); setTripStage("otp"); setSection("dashboard"); void requestAiHospitalReview(); notify(`Request locked. Reviewing nearby hospitals from ${driverPlace}. Ask the passenger for the OTP.`); };
+  const acceptRequest = () => {
+    if (!checklistComplete) {
+      setReadinessOpen(true);
+      notify("Complete the pre-shift safety checklist before accepting a critical request.");
+      return;
+    }
+    setBookingAlertOpen(false);
+    setSelectedHospital(nearestHospital);
+    setTripStage("otp");
+    setSection("dashboard");
+    void requestAiHospitalReview();
+    notify(`Request locked. Reviewing nearby hospitals from ${driverPlace}. Ask the passenger for the OTP.`);
+  };
   const verifyOtp = () => {
     if (otp === "4826") { const destination = hospitals.find((item) => item.name === aiDecision?.selectedHospital) ?? selectedHospital ?? nearestHospital; setSelectedHospital(destination); setTripStage("enroute"); setProgress(6); setSection("dashboard"); void requestAiHospitalReview(); notify(`Passenger verified. Ambulance moving to ${destination.name}; payment will open after arrival.`); }
     else notify("Enter the demo OTP 4826.");
   };
-  const completePayment = () => { setPaymentStatus("paid"); setTripStage("completed"); setSection("dashboard"); notify("₹680 payment recorded and trip closed."); };
+  const completePayment = () => { setPaymentStatus("paid"); setTripStage("completed"); setRestDue(true); setSection("dashboard"); notify("₹680 payment recorded and trip closed. Take a safety rest before another emergency run."); };
   const openHelp = () => notify("Support request opened. Dispatcher callback is available.");
+  const checklistComplete = Object.values(equipmentChecklist).every(Boolean);
+  const toggleAvailability = () => {
+    if (online) {
+      setOnline(false);
+      setReadinessOpen(false);
+      notify("You are offline and will not receive emergency requests.");
+      return;
+    }
+    setReadinessOpen(true);
+  };
+  const confirmReadiness = () => {
+    if (!checklistComplete) {
+      notify("Complete all three safety checks before going online.");
+      return;
+    }
+    setOnline(true);
+    setReadinessOpen(false);
+    window.setTimeout(() => setBookingAlertOpen(true), 350);
+    notify("Readiness verified. You are online for high-priority dispatch.");
+  };
 
-  return <div className="app-shell">
+  return <div className={`app-shell ${nightMode ? "night-mode" : ""}`}>
     <aside className="sidebar">
       <div className="brand"><div className="brand-mark"><Ambulance size={22} /></div><div><strong>SavLife Captain</strong><span>Driver operations</span></div></div>
-      <div className="online-card"><span className="status-dot" /><div><b>{online ? "You are online" : "You are offline"}</b><small>{online ? "Receiving requests" : "Go online to receive requests"}</small></div><button className={`switch ${online ? "on" : ""}`} onClick={() => setOnline(!online)} aria-label="Toggle availability"><span /></button></div>
+      <div className="online-card"><span className="status-dot" /><div><b>{online ? "You are online" : "You are offline"}</b><small>{online ? "Receiving requests" : "Go online to receive requests"}</small></div><button className={`switch ${online ? "on" : ""}`} onClick={toggleAvailability} aria-label="Toggle availability"><span /></button></div>
       <nav className="nav-list">{navItems.map(({ id, label, icon: Icon }) => <button key={id} className={`nav-item ${section === id ? "active" : ""}`} onClick={() => setSection(id)}><Icon size={18} /><span>{label}</span>{id === "requests" && online && <em>1</em>}</button>)}</nav>
       <div className="sidebar-bottom"><button className={`nav-item ${section === "help" ? "active" : ""}`} onClick={() => setSection("help")}><CircleHelp size={18} /><span>Help & support</span></button><button className="driver-mini" onClick={() => setSection("profile")}><div className="avatar">RK</div><div><b>{profile.name}</b><small>Captain · {profile.vehicle}</small></div><Settings size={16} /></button></div>
     </aside>
@@ -304,11 +343,13 @@ function App() {
         {section === "history" && <History paymentStatus={paymentStatus} />}
         {section === "profile" && <Profile profile={profile} setProfile={setProfile} online={online} onToggle={() => setOnline(!online)} editing={editingProfile} setEditing={setEditingProfile} notifications={notifications} setNotifications={setNotifications} notify={notify} />}
         {section === "earnings" && <Earnings onHistory={() => setSection("history")} notify={notify} />}
-        {section === "settings" && <SettingsPage online={online} notifications={notifications} setNotifications={setNotifications} onToggle={() => setOnline(!online)} onLogout={() => setAuthenticated(false)} notify={notify} />}
+        {section === "settings" && <SettingsPage online={online} notifications={notifications} setNotifications={setNotifications} onToggle={toggleAvailability} nightMode={nightMode} setNightMode={setNightMode} restDue={restDue} notify={notify} onLogout={() => setAuthenticated(false)} />}
         {section === "help" && <HelpPage notify={notify} />}
         {section === "payment" && <Payment hospital={selectedHospital} status={paymentStatus} onPay={completePayment} onBack={() => setSection("trip")} />}
       </div>
     </main>
+    {readinessOpen && authenticated && <ReadinessModal checklist={equipmentChecklist} setChecklist={setEquipmentChecklist} onConfirm={confirmReadiness} onClose={() => setReadinessOpen(false)} />}
+    {bookingAlertOpen && authenticated && online && tripStage === "incoming" && <BookingAlertModal onAccept={acceptRequest} onDecline={() => { setBookingAlertOpen(false); notify("Emergency request returned to dispatch."); }} /> }
     {notice && <div className="toast"><BadgeCheck size={18} />{notice}</div>}
   </div>;
 }
@@ -447,7 +488,7 @@ function ActiveTrip({ stage, hospital, position, progress, distance, eta, gpsSta
 function Hospitals({ selected, onSelect, position, onStart }: { selected: HospitalOption; onSelect: (hospital: HospitalOption) => void; position: Coordinates; onStart: () => void }) {
   const rankedHospitals = [...hospitals].sort((a, b) => hospitalRecommendation(b, position).score - hospitalRecommendation(a, position).score);
   const selectedMetrics = hospitalRecommendation(selected, position);
-  return <><div className="page-heading"><div><span className="eyebrow">LIVE ROUTE PLANNER</span><h2>Nearest suitable hospitals</h2><p className="muted">Recommendations recalculate from the driver’s current GPS position. Distance uses the live coordinate pair; ETA is a traffic-aware urban estimate and refreshes with GPS updates.</p></div><button className="primary-button" onClick={onStart}><Navigation size={17} /> Start navigation to selected</button></div><div className="hospital-layout"><section className="panel hospital-list"><PanelHeading title="Ranked recommendations" action={`${rankedHospitals.length} hospitals`} />{rankedHospitals.map((hospital, index) => { const metrics = hospitalRecommendation(hospital, position); return <button key={hospital.name} className={`hospital-row ${selected.name === hospital.name ? "selected" : ""}`} onClick={() => onSelect(hospital)}><div className="rank-badge">{index + 1}</div><div className="hospital-icon"><Hospital size={20} /></div><div className="hospital-main"><div className="hospital-name"><b>{hospital.name}</b><span className="tag">{index === 0 ? "Recommended" : hospital.tag}</span></div><span className="muted">{hospital.speciality} · {hospital.capacity}% emergency capacity</span><div className="hospital-meta"><span className="rating"><Star size={14} fill="currentColor" /> {hospital.rating} ({hospital.reviews.toLocaleString()})</span><span>{formatDistance(metrics.distance)}</span><strong>{metrics.eta} min est.</strong></div></div><ChevronRight size={18} /></button>; })}</section><section className="panel route-panel"><PanelHeading title="Hospital details & route" action={selected.openNow ? "Open now" : "Closed"} /><MapView position={position} hospital={selected} /><div className="hospital-detail-head"><div className="hospital-icon large"><Hospital size={24} /></div><div><h3>{selected.name}</h3><span className="muted">{selected.address}</span></div></div><div className="hospital-detail-grid"><Data label="Distance" value={formatDistance(selectedMetrics.distance)} /><Data label="ETA" value={`${selectedMetrics.eta} min est.`} /><Data label="Rating" value={`${selected.rating} / 5`} /><Data label="Capacity" value={`${selected.capacity}%`} /></div><div className="route-confidence"><Route size={16} /><div><b>Route intelligence</b><span>Calculated from live GPS coordinates using a 28 km/h urban driving model. The estimate refreshes whenever the driver position changes.</span></div></div><div className="hospital-detail-copy"><b>{selected.emergencyLevel} · {selected.speciality}</b><span>{selected.beds}. Emergency intake is currently {selected.openNow ? "open" : "unavailable"}.</span><span>{selected.phone}</span></div><div className="route-option selected"><div><b>Recommended route</b><span>Fastest available corridor from live driver location</span></div><strong>{selectedMetrics.eta} min est.</strong></div><div className="route-option"><div><b>Alternative route</b><span>Ring Road fallback · longer distance</span></div><strong>{estimateEtaMinutes(selectedMetrics.distance, 1.18)} min est.</strong></div><button className="primary-button full" onClick={onStart}><Navigation size={17} /> Navigate to {selected.name}</button></section></div></>;
+  return <><div className="page-heading"><div><span className="eyebrow">LIVE ROUTE PLANNER</span><h2>Nearest suitable hospitals</h2><p className="muted">Recommendations recalculate from the driver’s current GPS position. Distance uses the live coordinate pair; ETA is a traffic-aware urban estimate and refreshes with GPS updates.</p></div><button className="primary-button" onClick={onStart}><Navigation size={17} /> Start navigation to selected</button></div><div className="hospital-layout"><section className="panel hospital-list"><PanelHeading title="Ranked recommendations" action={`${rankedHospitals.length} hospitals`} />{rankedHospitals.map((hospital, index) => { const metrics = hospitalRecommendation(hospital, position); return <button key={hospital.name} className={`hospital-row ${selected.name === hospital.name ? "selected" : ""}`} onClick={() => onSelect(hospital)}><div className="rank-badge">{index + 1}</div><div className="hospital-icon"><Hospital size={20} /></div><div className="hospital-main"><div className="hospital-name"><b>{hospital.name}</b><span className="tag">{index === 0 ? "Recommended" : hospital.tag}</span></div><span className="muted">{hospital.speciality} · {hospital.capacity}% emergency capacity</span><div className="hospital-meta"><span className="rating"><Star size={14} fill="currentColor" /> {hospital.rating} ({hospital.reviews.toLocaleString()})</span><span>{formatDistance(metrics.distance)}</span><strong>{metrics.eta} min est.</strong></div></div><ChevronRight size={18} /></button>; })}</section><section className="panel route-panel"><PanelHeading title="Hospital details & route" action={selected.openNow ? "Open now" : "Closed"} /><MapView position={position} hospital={selected} /><div className="hospital-detail-head"><div className="hospital-icon large"><Hospital size={24} /></div><div><h3>{selected.name}</h3><span className="muted">{selected.address}</span></div></div><div className="hospital-detail-grid"><Data label="Distance" value={formatDistance(selectedMetrics.distance)} /><Data label="ETA" value={`${selectedMetrics.eta} min est.`} /><Data label="Rating" value={`${selected.rating} / 5`} /><Data label="Capacity" value={`${selected.capacity}%`} /></div><div className="route-confidence"><Route size={16} /><div><b>Route intelligence</b><span>Calculated from live GPS coordinates using a 28 km/h urban driving model. The estimate refreshes whenever the driver position changes.</span></div></div><div className="hospital-detail-copy"><b>{selected.emergencyLevel} · {selected.speciality}</b><span>{selected.beds}. Emergency intake is currently {selected.openNow ? "open" : "unavailable"}.</span><span>{selected.phone}</span><span><b>Ambulance entrance:</b> {selected.erEntrance}</span></div><div className="route-option selected"><div><b>Recommended route</b><span>Fastest available corridor from live driver location</span></div><strong>{selectedMetrics.eta} min est.</strong></div><div className="route-option"><div><b>Alternative route</b><span>Ring Road fallback · longer distance</span></div><strong>{estimateEtaMinutes(selectedMetrics.distance, 1.18)} min est.</strong></div><button className="primary-button full" onClick={onStart}><Navigation size={17} /> Navigate to {selected.name}</button></section></div></>;
 }
 
 function Payment({ hospital, status, onPay, onBack }: { hospital: HospitalOption; status: "pending" | "paid"; onPay: () => void; onBack: () => void }) { return <div className="payment-layout"><section className="panel payment-card"><div className="panel-icon teal"><CreditCard size={22} /></div><span className="eyebrow">TRIP AC-1048 · AUTOMATIC PAYMENT SESSION</span><h2>{status === "paid" ? "Payment completed" : "Collect trip payment"}</h2><p className="muted">Arrival at {hospital.name} was detected. Review the fare and close the trip.</p><div className="fare-total"><span>Total fare</span><strong>₹680</strong></div><div className="fare-lines"><Data label="Base trip" value="₹520" /><Data label="Emergency service" value="₹100" /><Data label="Platform fee" value="₹60" /><Data label="Method" value="UPI" /></div>{status === "pending" ? <button className="primary-button full" onClick={onPay}><Check size={17} /> Confirm payment received</button> : <div className="paid-banner"><Check size={18} /> Payment marked paid and trip closed.</div>}<button className="secondary-button full" onClick={onBack}>Back to active trip</button></section></div>; }
@@ -543,6 +584,19 @@ function MapView({ compact = false, position, hospital, progress = 0, moving = f
   </div>;
 }
 function Stat({ icon: Icon, label, value, detail }: { icon: typeof Truck; label: string; value: string; detail: string }) { return <div className="stat-card"><div className="stat-icon"><Icon size={18} /></div><span>{label}</span><strong>{value}</strong><small>{detail}</small></div>; }
+function BookingAlertModal({ onAccept, onDecline }: { onAccept: () => void; onDecline: () => void }) {
+  return <div className="modal-backdrop"><section className="booking-alert-modal" role="alertdialog" aria-modal="true" aria-labelledby="booking-alert-title"><div className="alert-pulse"><Bell size={22} /></div><span className="eyebrow">NEW EMERGENCY REQUEST · NOW</span><h2 id="booking-alert-title">Urgent chest-pain response</h2><p className="muted">A nearby patient needs immediate ambulance assistance. Verify the passenger by OTP before the live hospital route starts.</p><div className="alert-detail-grid"><Data label="Patient" value="Aarav Mehta · conscious" /><Data label="Pickup" value="2.1 km away" /><Data label="Priority" value="High · cardiac" tone="red" /></div><div className="modal-actions"><button className="secondary-button" onClick={onDecline}>Decline request</button><button className="primary-button" onClick={onAccept}>Accept & verify OTP <ArrowRight size={17} /></button></div></section></div>;
+}
+
+function ReadinessModal({ checklist, setChecklist, onConfirm, onClose }: { checklist: EquipmentChecklist; setChecklist: React.Dispatch<React.SetStateAction<EquipmentChecklist>>; onConfirm: () => void; onClose: () => void }) {
+  const items: { key: keyof EquipmentChecklist; title: string; detail: string }[] = [
+    { key: "oxygen", title: "Oxygen level above 80%", detail: "Cylinder pressure verified for critical calls" },
+    { key: "stretcher", title: "Stretcher sanitized", detail: "Wheels, straps, and locking rails inspected" },
+    { key: "defibrillator", title: "Defibrillator charged", detail: "Battery and pads ready for emergency use" },
+  ];
+  return <div className="modal-backdrop"><section className="readiness-modal" role="dialog" aria-modal="true" aria-labelledby="readiness-title"><div className="panel-icon teal"><ShieldCheck size={22} /></div><span className="eyebrow">PRE-SHIFT SAFETY CHECK</span><h2 id="readiness-title">Verify the ambulance before going online</h2><p className="muted">Complete the three checks so high-severity patients are matched only with a ready vehicle.</p><div className="readiness-list">{items.map((item) => <label className={`readiness-item ${checklist[item.key] ? "checked" : ""}`} key={item.key}><input type="checkbox" checked={checklist[item.key]} onChange={(event) => setChecklist((current) => ({ ...current, [item.key]: event.target.checked }))} /><span><b>{item.title}</b><small>{item.detail}</small></span><Check size={18} /></label>)}</div><div className="modal-actions"><button className="secondary-button" onClick={onClose}>Stay offline</button><button className="primary-button" onClick={onConfirm}>Verify & go online <ArrowRight size={17} /></button></div></section></div>;
+}
+
 function Data({ label, value, tone }: { label: string; value: string; tone?: "red" }) { return <div><span className="data-label">{label}</span><strong className={tone === "red" ? "red-text" : ""}>{value}</strong></div>; }
 function PanelHeading({ title, action, onClick }: { title: string; action?: string; onClick?: () => void }) { return <div className="panel-heading"><h3>{title}</h3>{action && <button className="text-button" onClick={onClick}>{action} <ChevronRight size={15} /></button>}</div>; }
 function ActivityRow({ time, title, detail }: { time: string; title: string; detail: string }) { return <div className="activity-row"><span className="activity-time">{time}</span><div className="activity-icon"><Hospital size={16} /></div><div><b>{title}</b><span>{detail}</span></div><ChevronRight size={16} /></div>; }
@@ -576,8 +630,8 @@ function Earnings({ onHistory, notify }: { onHistory: () => void; notify: (messa
   return <div className="earnings-page"><div className="page-heading"><div><span className="eyebrow">CAPTAIN FINANCE</span><h2>Earnings</h2><p className="muted">Track today’s ambulance trips, payouts, and weekly performance.</p></div><button className="secondary-button" onClick={onHistory}><Clock3 size={17} /> View trip history</button></div><div className="stat-grid"><Stat icon={Wallet} label="Today’s earnings" value="₹4,260" detail="6 completed trips" /><Stat icon={CreditCard} label="Pending payout" value="₹1,180" detail="Settles tomorrow" /><Stat icon={Route} label="Weekly trips" value="32" detail="+12% vs last week" /><Stat icon={Star} label="Rating" value="4.9" detail="128 ratings" /></div><div className="content-grid"><section className="panel"><PanelHeading title="Payout summary" action="Download" onClick={() => notify("Payout summary download prepared.")} /><div className="earnings-bars"><div style={{ height: "54%" }}><span>Mon</span></div><div style={{ height: "72%" }}><span>Tue</span></div><div style={{ height: "48%" }}><span>Wed</span></div><div style={{ height: "86%" }}><span>Thu</span></div><div style={{ height: "64%" }}><span>Fri</span></div><div style={{ height: "96%" }}><span>Sat</span></div><div style={{ height: "78%" }}><span>Sun</span></div></div></section><section className="panel"><PanelHeading title="Latest payout" action="Manage account" onClick={() => notify("Payout account settings opened.")} /><div className="payout-card"><div className="payout-icon"><CreditCard size={20} /></div><div><b>HDFC Bank ·•• 2041</b><span>Next settlement · 19 Aug 2026</span></div><strong>₹8,940</strong></div><div className="safety-banner"><ShieldCheck size={18} /><div><b>Account verified</b><span>Your payout details are ready for settlement.</span></div><Check size={17} /></div></section></div></div>;
 }
 
-function SettingsPage({ online, notifications, setNotifications, onToggle, onLogout, notify }: { online: boolean; notifications: boolean; setNotifications: (value: boolean) => void; onToggle: () => void; onLogout: () => void; notify: (message: string) => void }) {
-  return <div className="settings-page"><div className="page-heading"><div><span className="eyebrow">ACCOUNT CONTROLS</span><h2>Settings</h2><p className="muted">Manage how Captain receives dispatch requests and trip updates.</p></div></div><section className="panel settings-card"><SettingRow icon={Activity} title="Availability" detail={online ? "Online and receiving requests" : "Offline and not receiving requests"} action={<button className={`switch ${online ? "on" : ""}`} onClick={onToggle}><span /></button>} /><SettingRow icon={Bell} title="Request notifications" detail={notifications ? "Sound and browser alerts enabled" : "Alerts paused"} action={<button className={`switch ${notifications ? "on" : ""}`} onClick={() => setNotifications(!notifications)}><span /></button>} /><SettingRow icon={Navigation} title="Automatic trip detection" detail="Use GPS progress to detect hospital arrival" action={<button className="icon-button" onClick={() => notify("Automatic trip detection is enabled.")}><BadgeCheck size={18} color="#0F766E" /></button>} /><SettingRow icon={ShieldCheck} title="Safety and documents" detail="All ambulance documents are current" action={<button className="icon-button" onClick={() => notify("Documents are current.")}><ChevronRight size={18} /></button>} /></section><section className="panel danger-zone"><div><h3>Sign out of Captain</h3><p className="muted">You will stop receiving requests on this browser until you sign in again.</p></div><button className="danger-button" onClick={onLogout}>Sign out</button></section></div>;
+function SettingsPage({ online, notifications, setNotifications, onToggle, nightMode, setNightMode, restDue, onLogout, notify }: { online: boolean; notifications: boolean; setNotifications: (value: boolean) => void; onToggle: () => void; nightMode: boolean; setNightMode: (value: boolean) => void; restDue: boolean; onLogout: () => void; notify: (message: string) => void }) {
+  return <div className="settings-page"><div className="page-heading"><div><span className="eyebrow">ACCOUNT CONTROLS</span><h2>Settings</h2><p className="muted">Manage how Captain receives dispatch requests and trip updates.</p></div></div><section className="panel settings-card"><SettingRow icon={Activity} title="Availability" detail={online ? "Online and receiving requests" : "Offline and not receiving requests"} action={<button className={`switch ${online ? "on" : ""}`} onClick={onToggle}><span /></button>} /><SettingRow icon={Bell} title="Request notifications" detail={notifications ? "Sound and browser alerts enabled" : "Alerts paused"} action={<button className={`switch ${notifications ? "on" : ""}`} onClick={() => setNotifications(!notifications)}><span /></button>} /><SettingRow icon={Navigation} title="Automatic trip detection" detail="Use GPS progress to detect hospital arrival" action={<button className="icon-button" onClick={() => notify("Automatic trip detection is enabled.")}><BadgeCheck size={18} color="#0F766E" /></button>} /><SettingRow icon={ShieldCheck} title="Safety and documents" detail="All ambulance documents are current" action={<button className="icon-button" onClick={() => notify("Documents are current.")}><ChevronRight size={18} /></button>} /><SettingRow icon={Clock3} title="Mandatory safety rest" detail={restDue ? "Rest recommended after consecutive emergency runs" : "Rest prompt activates after completed emergency runs"} action={<button className="icon-button" onClick={() => notify(restDue ? "Please take a safety rest before accepting another emergency." : "Rest tracking is active.")}><Clock3 size={18} color={restDue ? "#B42318" : "#0F766E"} /></button>} /><SettingRow icon={MapPin} title="Night-driving visibility" detail={nightMode ? "High-contrast night mode enabled" : "Standard daylight interface"} action={<button className={`switch ${nightMode ? "on" : ""}`} onClick={() => setNightMode(!nightMode)}><span /></button>} /></section><section className="panel danger-zone"><div><h3>Sign out of Captain</h3><p className="muted">You will stop receiving requests on this browser until you sign in again.</p></div><button className="danger-button" onClick={onLogout}>Sign out</button></section></div>;
 }
 
 function HelpPage({ notify }: { notify: (message: string) => void }) {
