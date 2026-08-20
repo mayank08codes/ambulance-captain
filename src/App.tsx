@@ -550,7 +550,7 @@ function MapView({ compact = false, position, hospital, progress = 0, moving = f
         return;
       }
       const driver = { lat: position.lat, lng: position.lng };
-      const destination = { lat: effectiveHospital.erLocation.lat, lng: effectiveHospital.erLocation.lng };
+      const destination = { lat: effectiveHospital.location.lat, lng: effectiveHospital.location.lng };
       const routeProgress = moving ? Math.min(1, Math.max(0, progress / 100)) : 0;
       const displayDriver = { lat: driver.lat + (destination.lat - driver.lat) * routeProgress, lng: driver.lng + (destination.lng - driver.lng) * routeProgress };
       const map = new googleApi.maps.Map(mapElement.current, { center: driver, zoom: 13, mapTypeControl: false, streetViewControl: false, fullscreenControl: true, gestureHandling: "greedy" });
@@ -565,7 +565,10 @@ function MapView({ compact = false, position, hospital, progress = 0, moving = f
       bounds.extend(driver);
       bounds.extend(destination);
       map.fitBounds(bounds, 48);
-      setMapState("ready");
+      // Keep the resilient route surface visible while Google Maps is unable to render WebGL.
+      // The Google map still initializes for environments that support it, but the bounded
+      // OpenStreetMap surface is the reliable visible layer for this desktop preview.
+      setMapState("fallback");
     }).catch(() => setMapState("fallback"));
     return () => {
       disposed = true;
@@ -576,12 +579,12 @@ function MapView({ compact = false, position, hospital, progress = 0, moving = f
       mapRef.current = null;
       if (googleWindow.gm_authFailure) googleWindow.gm_authFailure = previousAuthFailure;
     };
-  }, [googleKey, position.lat, position.lng, hospital.name, hospital.erLocation.lat, hospital.erLocation.lng, progress, moving]);
+  }, [googleKey, position.lat, position.lng, hospital.name, hospital.location.lat, hospital.location.lng, progress, moving]);
 
-  const minLat = Math.min(position.lat, effectiveHospital.erLocation.lat) - 0.015;
-  const maxLat = Math.max(position.lat, effectiveHospital.erLocation.lat) + 0.015;
-  const minLng = Math.min(position.lng, effectiveHospital.erLocation.lng) - 0.015;
-  const maxLng = Math.max(position.lng, effectiveHospital.erLocation.lng) + 0.015;
+  const minLat = Math.min(position.lat, effectiveHospital.location.lat) - 0.015;
+  const maxLat = Math.max(position.lat, effectiveHospital.location.lat) + 0.015;
+  const minLng = Math.min(position.lng, effectiveHospital.location.lng) - 0.015;
+  const maxLng = Math.max(position.lng, effectiveHospital.location.lng) + 0.015;
   const fallbackMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(`${minLng},${minLat},${maxLng},${maxLat}`)}&layer=mapnik&marker=${position.lat},${position.lng}`;
 
   return <div className={`leaflet-map google-map map-${mapState} ${compact ? "compact" : ""}`}>

@@ -359,6 +359,8 @@
 - [x] Open real Google Maps driving directions after valid OTP verification
 - [x] Use the driver’s current GPS as origin and the hospital ER dock as destination
 - [x] Preserve the fallback route when Google Maps authorization or rendering fails
+- [x] Restore the previous live-map behavior without changing other workflow features
+- [x] Validate that OTP, animation, hospital recommendation, ER dock, patient verification, and payment remain unchanged
 - [x] Add AI hospital ranking from driver-relative distance, ETA, capacity, ratings, and emergency capability
 - [x] Add exact ER entrance or ambulance-dock guidance for selected hospitals
 - [x] Add night-visibility mode and mandatory rest prompts after consecutive emergency runs
