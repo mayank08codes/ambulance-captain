@@ -385,6 +385,13 @@
 
 
 
+## Main-dashboard patient voice verification
+
+- [x] Show patient voice-verification status and action on the first dashboard request surface
+- [x] Keep voice verification usable without navigating to another page
+- [x] Preserve OTP fallback and readiness-gated dispatch behavior
+- [x] Validate the dashboard voice-verification interaction
+
 ## Selectable AI hospital recommendations
 
 - [x] Show four AI-ranked hospital recommendations with distance, ETA, rating, capacity, and selection reason
@@ -427,3 +434,17 @@
 - [x] Add trip earnings and captain income breakdown to the payment and earnings surfaces
 - [x] Connect completed trip fare to the driver income summary
 - [x] Validate patient details and earnings through the booking-to-payment flow
+
+## Prominent hospital emergency contact
+
+- [ ] Add a verified hospital or ER contact number to the selected-hospital data
+- [ ] Display the hospital contact in a large, prominent header at the top of the hospital panel
+- [ ] Keep the contact clearly labeled and usable for emergency calling
+- [ ] Validate contact display without reintroducing fabricated numbers
+
+## Demo hospital call control
+
+- [x] Add a clearly labeled demo hospital phone number to the selected-hospital panel
+- [x] Place a prominent Call hospital action near the top of the panel
+- [x] Use a tel link or safe call handler without implying the number is verified
+- [x] Validate the contact action and demo labeling
