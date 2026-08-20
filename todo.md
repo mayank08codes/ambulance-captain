@@ -385,6 +385,13 @@
 
 
 
+## Selectable AI hospital recommendations
+
+- [x] Show four AI-ranked hospital recommendations with distance, ETA, rating, capacity, and selection reason
+- [x] Allow the captain to select another recommended hospital when it is more suitable or nearer
+- [x] Recalculate the active route and destination after hospital selection
+- [x] Validate hospital switching without breaking arrival and payment flow
+
 ## Readable driver location
 
 - [x] Replace visible latitude/longitude output with a readable driver place name or address
