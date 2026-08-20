@@ -365,11 +365,24 @@
 - [x] Add exact ER entrance or ambulance-dock guidance for selected hospitals
 - [x] Add night-visibility mode and mandatory rest prompts after consecutive emergency runs
 - [ ] Validate the complete booking-to-OTP-to-hospital-to-payment workflow with the new safety controls
+- [ ] Add a rest-or-continue popup after consecutive completed drives and payments
+- [ ] Make Rest update availability safely and Continue keep the captain ready for the next request
+- [ ] On Continue, automatically open the next incoming emergency request
+- [ ] On Rest, pause availability and suppress incoming request alerts until resumed
+- [ ] Transfer the next request back to dispatch when the captain chooses Rest
+- [ ] Show a clear confirmation that another available ambulance can receive the request
+
+
+- [ ] Validate the prompt after payment without breaking trip completion
+
 - [ ] Update README.md with the latest SavLife Captain features, workflow, setup, and validation notes
 - [x] Correct hospital phone data and remove unverified contact numbers from visible UI
 - [x] Validate hospital contact display across hospital cards and selected route details
 
 - [ ] Commit the README update to the connected GitHub repository
+- [ ] Document the rest-or-continue safety prompt and dispatch transfer behavior in README.md
+- [ ] Document the technology used for availability state, trip state, and request handoff
+
 
 
 ## Readable driver location

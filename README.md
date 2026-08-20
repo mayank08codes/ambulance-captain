@@ -23,6 +23,7 @@ The application keeps the captain’s primary workflow on one page rather than r
 | Driver profile | Keeps driver personal, vehicle, license, verification, and emergency-contact information outside the booking page. |
 | Earnings | Provides driver income and payout context separately from patient and booking details. |
 | Safety controls | Includes night-driving presentation and rest-safety prompts after emergency runs. |
+| Post-payment safety handoff | After payment, the captain can choose **Take a safety rest** or **Continue driving**. Rest takes the captain offline and returns the next request to dispatch; Continue keeps the captain online and opens the next emergency request alert. |
 | Readable location | Displays a reverse-geocoded driver place name or address instead of exposing latitude and longitude in the interface. |
 
 ## Main workflow
@@ -36,6 +37,8 @@ The application keeps the captain’s primary workflow on one page rather than r
 7. The map and ambulance marker begin the active route toward the selected hospital’s emergency-dock context.
 8. The accelerated demo route reaches arrival automatically, after which the payment stage opens.
 9. The captain completes payment confirmation and receives a safety-rest prompt before another emergency run.
+10. If the captain chooses **Continue driving**, availability remains active and the next emergency request appears automatically.
+11. If the captain chooses **Take a safety rest**, the current request state is returned to dispatch, the captain goes offline, and new alerts remain paused until availability is restored.
 
 ## Technology stack
 
@@ -52,6 +55,8 @@ The application keeps the captain’s primary workflow on one page rather than r
 | Location | Browser Geolocation API | Reads the captain’s current GPS position when permission and device support are available. |
 | Styling | CSS and NativeWind-compatible project styles | Desktop console layout, operational theme, animation, and night-driving presentation. |
 | Icons | Lucide React | Consistent operational icons for requests, maps, hospitals, payments, and safety controls. |
+| Workflow state | React `useState` and `useEffect` | Tracks availability, trip stage, payment completion, completed-drive count, modal state, and automatic request-alert timing. |
+| Client timing | Browser timers | Drives the accelerated demo route, post-payment alert handoff, audio-ping countdown, and transient status notifications. |
 | Testing | Vitest | Workflow, API-key configuration, and deterministic behavior checks. |
 | Package manager | pnpm | Dependency management and project scripts. |
 
@@ -112,7 +117,7 @@ The current project validation covers the ambulance workflow and Google Maps key
 
 Patient information is operationally sensitive. The booking surface should remain limited to information required for the captain’s active response, while driver personal information belongs in the dedicated Driver profile section. Production deployments should add authenticated roles, audit logging, encrypted transport, secure data retention, and explicit access controls before handling real patient records.
 
-The current demo uses a deterministic OTP and accelerated route playback for training and preview purposes. Real dispatch should replace demo timing with authenticated patient-side verification, road-snapped directions, live traffic data, and a backend request state shared by patient, dispatcher, and captain clients.
+The current demo uses a deterministic OTP, accelerated route playback, and in-memory React workflow state for training and preview purposes. After payment, the safety handoff uses the same state machine: **Rest** sets the captain offline and returns the next request to dispatch, while **Continue** keeps the captain online and triggers the next emergency-request alert. Real dispatch should replace demo timing with authenticated patient-side verification, road-snapped directions, live traffic data, persistent request assignment, and a backend request state shared by patient, dispatcher, and captain clients.
 
 ## Roadmap
 
