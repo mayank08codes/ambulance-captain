@@ -352,6 +352,13 @@
 - [x] Add a pre-shift checklist for oxygen level, stretcher sanitation, and defibrillator readiness
 - [x] Add an incoming emergency booking popup and patient verification before active dispatch
 - [ ] Add cancellation handling with a nearby next-request option
+- [ ] Add OTP and five-second patient audio-ping verification status before active dispatch
+- [ ] Automatically route the driver to the next closest waiting request after cancellation
+- [ ] Route hospital navigation to dedicated ER ramp or ambulance-dock coordinates
+- [ ] Validate verification, cancellation recovery, and ER entrance guidance end to end
+- [x] Open real Google Maps driving directions after valid OTP verification
+- [x] Use the driver’s current GPS as origin and the hospital ER dock as destination
+- [x] Preserve the fallback route when Google Maps authorization or rendering fails
 - [x] Add AI hospital ranking from driver-relative distance, ETA, capacity, ratings, and emergency capability
 - [x] Add exact ER entrance or ambulance-dock guidance for selected hospitals
 - [x] Add night-visibility mode and mandatory rest prompts after consecutive emergency runs
