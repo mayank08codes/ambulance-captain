@@ -366,6 +366,9 @@
 - [x] Add night-visibility mode and mandatory rest prompts after consecutive emergency runs
 - [ ] Validate the complete booking-to-OTP-to-hospital-to-payment workflow with the new safety controls
 - [ ] Update README.md with the latest SavLife Captain features, workflow, setup, and validation notes
+- [x] Correct hospital phone data and remove unverified contact numbers from visible UI
+- [x] Validate hospital contact display across hospital cards and selected route details
+
 - [ ] Commit the README update to the connected GitHub repository
 
 
