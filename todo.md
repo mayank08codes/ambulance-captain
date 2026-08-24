@@ -485,3 +485,9 @@
 
 - [x] Keep real Delhi hospital recommendations genuinely near the demo captain location, targeting approximately 3–4 km where the selected local set supports it.
 - [x] Validate displayed distances against the real coordinates instead of using impossible or distant values.
+
+## Nearby patient pickup and contact display refinement
+
+- [x] Move the demo ambulance and patient pickup coordinates close together in Delhi.
+- [x] Use distinct +91-format demo contact numbers for each hospital and label them demo/unverified.
+- [x] Validate the nearby ambulance-to-patient distance and contact display across recommendations and call actions.
