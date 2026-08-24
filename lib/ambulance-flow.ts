@@ -9,7 +9,7 @@ const allowedTransitions: Record<TripStatus, TripStatus[]> = {
   completed: [],
 };
 
-export const REQUEST_ACCEPTANCE_SECONDS = 5;
+export const REQUEST_ACCEPTANCE_SECONDS = 10;
 
 export function requestExpired(secondsLeft: number) {
   return secondsLeft <= 0;

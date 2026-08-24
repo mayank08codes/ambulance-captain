@@ -9,7 +9,7 @@ describe("ambulance captain workflow", () => {
   });
 
   it("expires the incoming request at zero seconds", () => {
-    expect(REQUEST_ACCEPTANCE_SECONDS).toBe(5);
+    expect(REQUEST_ACCEPTANCE_SECONDS).toBe(10);
     expect(requestExpired(4)).toBe(false);
     expect(requestExpired(0)).toBe(true);
     expect(requestExpired(-1)).toBe(true);

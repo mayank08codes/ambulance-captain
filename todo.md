@@ -456,3 +456,9 @@
 - [x] Assign distinct realistic Indian hospital contact numbers and expose click-to-call actions.
 - [x] Remove the duplicate Hospital and Route section from the dashboard.
 - [x] Make the Offline control immediately update the top status indicator and dispatch availability.
+
+## Request timer and payment adjustment
+
+- [x] Increase the incoming request acceptance timer from 5 seconds to 10 seconds.
+- [x] Adjust the demo payment amount to remain between ₹150 and ₹200 across booking and payment surfaces.
+- [x] Validate the updated timer and payment workflow.
