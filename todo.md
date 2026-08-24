@@ -448,3 +448,11 @@
 - [x] Place a prominent Call hospital action near the top of the panel
 - [x] Use a tel link or safe call handler without implying the number is verified
 - [x] Validate the contact action and demo labeling
+
+## Incoming request timer and unified hospital dashboard update
+
+- [x] Add a 5-second incoming-request acceptance timer that auto-declines expired requests.
+- [x] Keep AI-ranked hospital recommendations on the main dashboard beside the map after OTP verification.
+- [x] Assign distinct realistic Indian hospital contact numbers and expose click-to-call actions.
+- [x] Remove the duplicate Hospital and Route section from the dashboard.
+- [x] Make the Offline control immediately update the top status indicator and dispatch availability.

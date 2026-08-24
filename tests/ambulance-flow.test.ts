@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { calculateFare, canTransition, chooseRoute, isValidOtp } from "../lib/ambulance-flow";
+import { calculateFare, canTransition, chooseRoute, isValidOtp, requestExpired, REQUEST_ACCEPTANCE_SECONDS } from "../lib/ambulance-flow";
 
 describe("ambulance captain workflow", () => {
   it("accepts the demo passenger OTP and rejects an incorrect code", () => {
     expect(isValidOtp("4826")).toBe(true);
     expect(isValidOtp("4827")).toBe(false);
+  });
+
+  it("expires the incoming request at zero seconds", () => {
+    expect(REQUEST_ACCEPTANCE_SECONDS).toBe(5);
+    expect(requestExpired(4)).toBe(false);
+    expect(requestExpired(0)).toBe(true);
+    expect(requestExpired(-1)).toBe(true);
   });
 
   it("allows only the next safe trip transition", () => {

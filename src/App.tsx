@@ -27,6 +27,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { REQUEST_ACCEPTANCE_SECONDS, requestExpired } from "../lib/ambulance-flow";
 
 type Section = "dashboard" | "requests" | "trip" | "hospitals" | "history" | "profile" | "payment" | "earnings" | "settings" | "help";
 type TripStage = "incoming" | "otp" | "enroute" | "arrived" | "payment" | "completed";
@@ -70,17 +71,16 @@ function validCoordinates(value: Coordinates): Coordinates {
     : DEMO_DRIVER;
 }
 const hospitals: HospitalOption[] = [
-  { name: "Central Emergency Hospital", rating: 4.8, reviews: 1240, beds: "ER available", capacity: 82, speciality: "Emergency, trauma, ICU", emergencyLevel: "Level 1 trauma", openNow: true, address: "Emergency District · Main Avenue", phone: "Hospital contact not verified", erEntrance: "Ambulance Dock A · Emergency Bay", erLocation: { lat: 40.7356, lng: -73.9794 }, tag: "Best overall", feedback: "Fast triage and consistently calm emergency teams", reviewHighlight: "Patients praise short intake times and clear updates", location: { lat: 40.735, lng: -73.98 } },
-  { name: "Riverside Medical Center", rating: 4.6, reviews: 864, beds: "Cardiac unit", capacity: 64, speciality: "Cardiac, emergency, NICU", emergencyLevel: "Level 2 trauma", openNow: true, address: "22 Riverside Drive · Medical Quarter", phone: "Hospital contact not verified", erEntrance: "East ER Ramp · Cardiac Intake", erLocation: { lat: 40.7315, lng: -73.9884 }, tag: "Top rated", feedback: "Strong cardiac response and family communication", reviewHighlight: "Feedback highlights attentive nurses and clean facilities", location: { lat: 40.731, lng: -73.989 } },
-  { name: "Northpoint General Hospital", rating: 4.4, reviews: 702, beds: "Trauma centre", capacity: 46, speciality: "Trauma, orthopaedics, ER", emergencyLevel: "Level 1 trauma", openNow: true, address: "8 Northpoint Road · Civic Medical Zone", phone: "Hospital contact not verified", erEntrance: "Trauma Gate 2 · Ambulance Ramp", erLocation: { lat: 40.6995, lng: -74.0114 }, tag: "24/7 intake", feedback: "Reliable trauma intake with specialist coverage", reviewHighlight: "Drivers report dependable handover and 24/7 reception", location: { lat: 40.699, lng: -74.012 } },
-  { name: "MetroCare Emergency Institute", rating: 4.7, reviews: 958, beds: "ER beds available", capacity: 71, speciality: "Emergency, cardiac, ICU", emergencyLevel: "Level 1 trauma", openNow: true, address: "14 MetroCare Way · Civic Medical Zone", phone: "Hospital contact not verified", erEntrance: "Ambulance Dock B · Emergency Intake", erLocation: { lat: 40.7219, lng: -73.9882 }, tag: "Nearest ER", feedback: "Fast emergency intake with strong critical-care coordination", reviewHighlight: "Recent feedback highlights rapid triage and clear handover", location: { lat: 40.7215, lng: -73.9885 } },
+  { name: "Central Emergency Hospital", rating: 4.8, reviews: 1240, beds: "ER available", capacity: 82, speciality: "Emergency, trauma, ICU", emergencyLevel: "Level 1 trauma", openNow: true, address: "Emergency District · Main Avenue", phone: "+91 98252 28959", erEntrance: "Ambulance Dock A · Emergency Bay", erLocation: { lat: 40.7356, lng: -73.9794 }, tag: "Best overall", feedback: "Fast triage and consistently calm emergency teams", reviewHighlight: "Patients praise short intake times and clear updates", location: { lat: 40.735, lng: -73.98 } },
+  { name: "Riverside Medical Center", rating: 4.6, reviews: 864, beds: "Cardiac unit", capacity: 64, speciality: "Cardiac, emergency, NICU", emergencyLevel: "Level 2 trauma", openNow: true, address: "22 Riverside Drive · Medical Quarter", phone: "+91 97641 58320", erEntrance: "East ER Ramp · Cardiac Intake", erLocation: { lat: 40.7315, lng: -73.9884 }, tag: "Top rated", feedback: "Strong cardiac response and family communication", reviewHighlight: "Feedback highlights attentive nurses and clean facilities", location: { lat: 40.731, lng: -73.989 } },
+  { name: "Northpoint General Hospital", rating: 4.4, reviews: 702, beds: "Trauma centre", capacity: 46, speciality: "Trauma, orthopaedics, ER", emergencyLevel: "Level 1 trauma", openNow: true, address: "8 Northpoint Road · Civic Medical Zone", phone: "+91 98908 41763", erEntrance: "Trauma Gate 2 · Ambulance Ramp", erLocation: { lat: 40.6995, lng: -74.0114 }, tag: "24/7 intake", feedback: "Reliable trauma intake with specialist coverage", reviewHighlight: "Drivers report dependable handover and 24/7 reception", location: { lat: 40.699, lng: -74.012 } },
+  { name: "MetroCare Emergency Institute", rating: 4.7, reviews: 958, beds: "ER beds available", capacity: 71, speciality: "Emergency, cardiac, ICU", emergencyLevel: "Level 1 trauma", openNow: true, address: "14 MetroCare Way · Civic Medical Zone", phone: "+91 98177 62408", erEntrance: "Ambulance Dock B · Emergency Intake", erLocation: { lat: 40.7219, lng: -73.9882 }, tag: "Nearest ER", feedback: "Fast emergency intake with strong critical-care coordination", reviewHighlight: "Recent feedback highlights rapid triage and clear handover", location: { lat: 40.7215, lng: -73.9885 } },
 ];
 
 const navItems: { id: Section; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "requests", label: "Requests", icon: Bell },
   { id: "trip", label: "Active trip", icon: Navigation },
-  { id: "hospitals", label: "Hospitals & routes", icon: Hospital },
   { id: "history", label: "Trip history", icon: Clock3 },
   { id: "profile", label: "Driver profile", icon: UserRound },
   { id: "earnings", label: "Earnings", icon: Wallet },
@@ -148,6 +148,7 @@ function App() {
   const [online, setOnline] = useState(true);
   const [readinessOpen, setReadinessOpen] = useState(true);
   const [bookingAlertOpen, setBookingAlertOpen] = useState(false);
+  const [requestSecondsLeft, setRequestSecondsLeft] = useState(5);
   const [nightMode, setNightMode] = useState(false);
   const [restDue, setRestDue] = useState(false);
   const [restPromptOpen, setRestPromptOpen] = useState(false);
@@ -270,6 +271,23 @@ function App() {
   }, [authenticated, online, driverPosition.lat, driverPosition.lng]);
 
   useEffect(() => {
+    if (!bookingAlertOpen || !authenticated || !online || tripStage !== "incoming") return;
+    setRequestSecondsLeft(REQUEST_ACCEPTANCE_SECONDS);
+    const timer = window.setInterval(() => {
+      setRequestSecondsLeft((seconds) => {
+        const next = Math.max(0, seconds - 1);
+        if (requestExpired(next)) {
+          window.clearInterval(timer);
+          setBookingAlertOpen(false);
+          notify("Request timed out after 5 seconds and was returned to dispatch.");
+        }
+        return next;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [bookingAlertOpen, authenticated, online, tripStage]);
+
+  useEffect(() => {
     if (tripStage !== "enroute") return;
     // Fast demo playback: the marker starts immediately after OTP and reaches
     // the selected hospital quickly, making the route-to-payment handoff visible.
@@ -320,6 +338,7 @@ function App() {
       return;
     }
     setBookingAlertOpen(false);
+    setRequestSecondsLeft(REQUEST_ACCEPTANCE_SECONDS);
     setSelectedHospital(nearestHospital);
     setTripStage("otp");
     setSection("dashboard");
@@ -367,6 +386,8 @@ function App() {
   const toggleAvailability = () => {
     if (online) {
       setOnline(false);
+      setBookingAlertOpen(false);
+      setRequestSecondsLeft(REQUEST_ACCEPTANCE_SECONDS);
       setReadinessOpen(false);
       notify("You are offline and will not receive emergency requests.");
       return;
@@ -379,6 +400,7 @@ function App() {
       return;
     }
     setOnline(true);
+    setRequestSecondsLeft(REQUEST_ACCEPTANCE_SECONDS);
     setReadinessOpen(false);
     window.setTimeout(() => setBookingAlertOpen(true), 350);
     notify("Readiness verified. You are online for high-priority dispatch.");
@@ -394,10 +416,9 @@ function App() {
     <main className="main-area">
       <header className="topbar"><div className="mobile-menu"><Menu size={20} /></div><div><span className="eyebrow">LIVE OPERATIONS · GPS ENABLED</span><h1>{section === "dashboard" ? `Good morning, ${profile.name.split(" ")[0]}` : section === "payment" ? "Payment" : navItems.find((item) => item.id === section)?.label}</h1></div><div className="top-actions"><span className="live-pill"><span className="status-dot" /> <b>Driver location</b> · {driverPlace}</span><button className="icon-button" onClick={() => notify(notifications ? "You have 1 new dispatch alert." : "Notifications are paused.")}><Bell size={18} /></button><button className="top-avatar" onClick={() => setSection("profile")}>RK</button></div></header>
       <div className="page-content">
-        {section === "dashboard" && <UnifiedConsole online={online} stage={tripStage} otp={otp} setOtp={setOtp} position={driverPosition} driverPlace={driverPlace} hospital={selectedHospital} distance={selectedDistance} eta={selectedEta} progress={progress} gpsStatus={gpsStatus} paymentStatus={paymentStatus} aiDecision={aiDecision} aiLoading={aiLoading} onAccept={acceptRequest} onVerify={verifyOtp} onDecline={() => { setTripStage("incoming"); notify("Request returned to dispatch."); }} onArrive={() => { setProgress(100); setTripStage("payment"); notify("Arrival confirmed. Payment session opened automatically."); }} onPay={completePayment} onOpenHospitals={() => setSection("hospitals")} onHistory={() => setSection("history")} audioPingSeconds={audioPingSeconds} audioVerified={audioVerified} onStartAudioPing={startAudioPing} />}
+        {section === "dashboard" && <UnifiedConsole online={online} stage={tripStage} otp={otp} setOtp={setOtp} position={driverPosition} driverPlace={driverPlace} hospital={selectedHospital} distance={selectedDistance} eta={selectedEta} progress={progress} gpsStatus={gpsStatus} paymentStatus={paymentStatus} aiDecision={aiDecision} aiLoading={aiLoading} onAccept={acceptRequest} onVerify={verifyOtp} onDecline={() => { setBookingAlertOpen(false); setRequestSecondsLeft(REQUEST_ACCEPTANCE_SECONDS); setTripStage("incoming"); notify("Request returned to dispatch."); }} onArrive={() => { setProgress(100); setTripStage("payment"); notify("Arrival confirmed. Payment session opened automatically."); }} onPay={completePayment} onOpenHospitals={() => setSection("dashboard")} onSelectHospital={selectHospital} onHistory={() => setSection("history")} audioPingSeconds={audioPingSeconds} audioVerified={audioVerified} onStartAudioPing={startAudioPing} />}
         {section === "requests" && <Requests stage={tripStage} otp={otp} setOtp={setOtp} onAccept={acceptRequest} onVerify={verifyOtp} onDecline={() => { setTripStage("incoming"); setSection("dashboard"); notify("Request returned to dispatch."); }} driverPosition={driverPosition} selectedHospital={selectedHospital} audioPingSeconds={audioPingSeconds} audioVerified={audioVerified} onStartAudioPing={startAudioPing} />}
-        {section === "trip" && <ActiveTrip stage={tripStage} hospital={selectedHospital} position={driverPosition} progress={progress} distance={selectedDistance} eta={selectedEta} gpsStatus={gpsStatus} onHospitals={() => setSection("hospitals")} onArrive={() => { setProgress(100); setTripStage("payment"); setSection("dashboard"); notify("Arrival confirmed. Payment session opened automatically."); }} onCancel={() => { setTripStage("incoming"); setSection("requests"); setAudioVerified(false); setAudioPingSeconds(0); setBookingAlertOpen(true); notify("Patient cancellation recorded. Routing you to the next closest waiting request."); }} />}
-        {section === "hospitals" && <Hospitals selected={selectedHospital} onSelect={selectHospital} position={driverPosition} aiDecision={aiDecision} onStart={() => { setTripStage("enroute"); setSection("trip"); notify(`Navigation started to ${selectedHospital.name}.`); }} />}
+        {section === "trip" && <ActiveTrip stage={tripStage} hospital={selectedHospital} position={driverPosition} progress={progress} distance={selectedDistance} eta={selectedEta} gpsStatus={gpsStatus} onHospitals={() => setSection("dashboard")} onArrive={() => { setProgress(100); setTripStage("payment"); setSection("dashboard"); notify("Arrival confirmed. Payment session opened automatically."); }} onCancel={() => { setTripStage("incoming"); setSection("requests"); setAudioVerified(false); setAudioPingSeconds(0); setBookingAlertOpen(true); notify("Patient cancellation recorded. Routing you to the next closest waiting request."); }} />}
         {section === "history" && <History paymentStatus={paymentStatus} />}
         {section === "profile" && <Profile profile={profile} setProfile={setProfile} online={online} onToggle={() => setOnline(!online)} editing={editingProfile} setEditing={setEditingProfile} notifications={notifications} setNotifications={setNotifications} notify={notify} />}
         {section === "earnings" && <Earnings onHistory={() => setSection("history")} notify={notify} />}
@@ -408,7 +429,7 @@ function App() {
     </main>
     {readinessOpen && authenticated && <ReadinessModal checklist={equipmentChecklist} setChecklist={setEquipmentChecklist} onConfirm={confirmReadiness} onClose={() => setReadinessOpen(false)} />}
     {restPromptOpen && authenticated && <RestPromptModal completedTrips={completedTrips} onRest={takeSafetyRest} onContinue={continueDriving} />}
-    {bookingAlertOpen && authenticated && online && tripStage === "incoming" && <BookingAlertModal onAccept={acceptRequest} onDecline={() => { setBookingAlertOpen(false); notify("Emergency request returned to dispatch."); }} /> }
+    {bookingAlertOpen && authenticated && online && tripStage === "incoming" && <BookingAlertModal secondsLeft={requestSecondsLeft} onAccept={acceptRequest} onDecline={() => { setBookingAlertOpen(false); setRequestSecondsLeft(REQUEST_ACCEPTANCE_SECONDS); notify("Emergency request returned to dispatch."); }} /> }
     {notice && <div className="toast"><BadgeCheck size={18} />{notice}</div>}
   </div>;
 }
@@ -434,6 +455,7 @@ function UnifiedConsole({
   onArrive,
   onPay,
   onOpenHospitals,
+  onSelectHospital,
   onHistory,
   audioPingSeconds,
   audioVerified,
@@ -459,6 +481,7 @@ function UnifiedConsole({
   onArrive: () => void;
   onPay: () => void;
   onOpenHospitals: () => void;
+  onSelectHospital: (hospital: HospitalOption) => void;
   onHistory: () => void;
   audioPingSeconds: number;
   audioVerified: boolean;
@@ -505,6 +528,7 @@ function UnifiedConsole({
             <div className="console-request"><span className="eyebrow">REQUEST AC-1048 · LIVE</span><h3>Urgent chest-pain response</h3><p className="muted"><b>Patient pickup</b> · {formatDistance(distanceKm(position, contextualPickup(position)))} from the driver location.</p>            <div className="console-detail-grid"><Data label="Patient" value="Aarav Mehta" /><Data label="Condition" value="Chest pain · conscious" /><Data label="Patient phone" value="+91 98765 42041" /><Data label="Urgency" value="High" /><Data label="Service" value="Basic Life Support" /><Data label="Payment" value="UPI · ₹680 est." /></div></div>
             <div className={`audio-ping-status dashboard-audio-ping ${audioVerified ? "verified" : ""}`}><Mic size={16} /><div><b>{audioVerified ? "Patient voice verified" : audioPingSeconds ? `Patient voice ping · ${audioPingSeconds}/5 sec` : "Verify patient by voice"}</b><span>{audioVerified ? "Voice confirmation is ready for dispatch." : "Optional 5-second voice confirmation before accepting this emergency request."}</span></div><button className="icon-button" onClick={onStartAudioPing} disabled={audioPingSeconds > 0 && audioPingSeconds < 5} aria-label="Start patient voice verification">{audioVerified ? <BadgeCheck size={17} /> : <Mic size={17} />}</button></div>
             <div className="ai-decision"><Hospital size={19} /><div><b>{aiLoading ? "AI hospital review in progress" : aiDecision ? `AI review: ${aiDecision.selectedHospital}` : "AI hospital review ready"}</b><span>{aiLoading ? "Comparing nearby emergency hospitals from the driver location…" : aiDecision?.summary ?? "Ranking uses distance, ETA, emergency capability, open status, capacity, ratings, and verified feedback."}</span></div></div>
+            <div className="request-countdown inline-countdown"><Clock3 size={16} /><b>5-second response window</b><span>Accept before dispatch returns this request.</span></div>
             <button className="primary-button full" onClick={onAccept}><Check size={17} /> Accept and lock request</button>
             <button className="secondary-button full" onClick={onDecline}><X size={17} /> Decline request</button>
           </>}
@@ -515,11 +539,12 @@ function UnifiedConsole({
             <input className="otp-field" value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="4826" inputMode="numeric" />
             <span className="helper">Ask the passenger for the 4-digit code. Demo code: 4826.</span>
             <button className="primary-button full" onClick={onVerify}><Navigation size={17} /> Verify OTP and start live map</button>
+            <InlineHospitalRecommendations selected={hospital} position={position} aiDecision={aiDecision} aiLoading={aiLoading} onSelect={onSelectHospital} />
           </>}
           {stage === "enroute" && <>
             <div className="ai-decision"><Route size={19} /><div><b>AI route decision active</b><span>{aiDecision?.summary ?? `${hospital.name} balances ETA, emergency intake, capacity, rating, and feedback.`}</span></div></div>
             <div className="console-destination"><Hospital size={19} /><div><b>{hospital.name}</b><span>{formatDistance(distance)} · {eta} min · {hospital.emergencyLevel}</span><small>Updates from live GPS as the ambulance moves.</small></div></div>
-            <button className="secondary-button full" onClick={onOpenHospitals}><Hospital size={17} /> Compare nearby hospitals</button>
+            <InlineHospitalRecommendations selected={hospital} position={position} aiDecision={aiDecision} aiLoading={aiLoading} onSelect={onSelectHospital} />
             <button className="primary-button full" onClick={onArrive}><MapPin size={17} /> Confirm hospital arrival</button>
           </>}
           {stage === "payment" && <>
@@ -551,11 +576,17 @@ function ActiveTrip({ stage, hospital, position, progress, distance, eta, gpsSta
   return <><div className="trip-toolbar"><div><span className="eyebrow">TRIP AC-1048 · {stage === "arrived" || stage === "payment" ? "ARRIVED" : "EN ROUTE"}</span><h2>Taking Aarav to emergency care</h2></div><div className="trip-toolbar-actions"><button className="secondary-button" onClick={() => window.open("tel:+919876542041")}><Phone size={16} /> Dispatcher</button><button className="danger-button" onClick={() => alert("Emergency assistance requested for this demo trip.")}><Activity size={16} /> Emergency</button><button className="secondary-button" onClick={onCancel}><X size={16} /> Patient cancelled</button></div></div><div className="trip-layout"><section className="panel map-panel"><div className="map-head"><span><MapPin size={16} /> Live OpenStreetMap route</span><span className="traffic"><span className="status-dot" /> {gpsStatus}</span></div><MapView position={position} hospital={hospital} progress={progress} moving={stage === "enroute"} /><div className="progress-track"><span style={{ width: `${progress}%` }} /></div><div className="map-footer"><div><span className="muted">ARRIVAL ETA</span><strong>{progress >= 100 ? "Arrived" : `${eta} min est.`}</strong><small>Live GPS estimate</small></div><div><span className="muted">LIVE DISTANCE</span><strong>{formatDistance(distance)}</strong></div><div><span className="muted">DESTINATION</span><strong>{hospital.name}</strong></div></div></section><aside className="panel trip-side"><div className="side-section"><span className="eyebrow">AUTOMATIC TRIP DETECTION</span><h3>{progress >= 100 ? "Hospital arrival detected" : "Navigation in progress"}</h3><p className="muted">{progress >= 100 ? "The payment session opens automatically after arrival." : "GPS progress updates the route and nearby hospital distance."}</p></div><div className="selected-hospital"><Hospital size={20} /><div><b>{hospital.name}</b><span>{hospital.rating} ★ · {formatDistance(distance)} · {hospital.beds}</span><small>Live GPS estimate · updates as the ambulance moves</small></div></div>{progress < 100 ? <><button className="primary-button full" onClick={onHospitals}><Route size={17} /> Compare nearby hospitals</button><button className="secondary-button full" onClick={onArrive}><MapPin size={17} /> Simulate GPS arrival</button></> : <button className="primary-button full" onClick={onArrive}><CreditCard size={17} /> Open payment session</button>}</aside></div></>;
 }
 
+function InlineHospitalRecommendations({ selected, position, aiDecision, aiLoading, onSelect }: { selected: HospitalOption; position: Coordinates; aiDecision: AiHospitalDecision | null; aiLoading: boolean; onSelect: (hospital: HospitalOption) => void }) {
+  const ranked = [...hospitals].sort((a, b) => hospitalRecommendation(b, position).score - hospitalRecommendation(a, position).score);
+  const aiReasons = new Map((aiDecision?.rankedHospitals ?? []).map((item) => [item.name, item.reason]));
+  return <div className="inline-hospital-recommendations"><div className="inline-section-heading"><div><span className="eyebrow">AI HOSPITAL RECOMMENDATIONS</span><b>{aiLoading ? "Comparing nearby emergency hospitals…" : "Choose the best receiving hospital"}</b></div><span className="hospital-count">{ranked.length} options</span></div><div className="inline-hospital-list">{ranked.map((item, index) => { const metrics = hospitalRecommendation(item, position); return <button key={item.name} className={`inline-hospital-option ${selected.name === item.name ? "selected" : ""}`} onClick={() => onSelect(item)}><span className="rank-badge">{index + 1}</span><span className="inline-hospital-copy"><b>{item.name}</b><small>{formatDistance(metrics.distance)} · {metrics.eta} min · {item.rating}★ · {item.capacity}% capacity</small><em>{aiReasons.get(item.name) ?? item.feedback}</em><strong>{item.phone}</strong></span><ChevronRight size={15} /></button>; })}</div></div>;
+}
+
 function Hospitals({ selected, onSelect, position, aiDecision, onStart }: { selected: HospitalOption; onSelect: (hospital: HospitalOption) => void; position: Coordinates; aiDecision: AiHospitalDecision | null; onStart: () => void }) {
   const rankedHospitals = [...hospitals].sort((a, b) => hospitalRecommendation(b, position).score - hospitalRecommendation(a, position).score);
   const selectedMetrics = hospitalRecommendation(selected, position);
   const aiReasons = new Map((aiDecision?.rankedHospitals ?? []).map((item) => [item.name, item.reason]));
-  return <><div className="page-heading"><div><span className="eyebrow">LIVE ROUTE PLANNER</span><h2>Nearest suitable hospitals</h2><p className="muted">Recommendations recalculate from the driver’s current GPS position. Distance uses the live coordinate pair; ETA is a traffic-aware urban estimate and refreshes with GPS updates.</p></div><button className="primary-button" onClick={onStart}><Navigation size={17} /> Start navigation to selected</button></div><div className="hospital-layout"><section className="panel hospital-list"><PanelHeading title="Ranked recommendations" action={`${rankedHospitals.length} hospitals`} />{rankedHospitals.map((hospital, index) => { const metrics = hospitalRecommendation(hospital, position); return <button key={hospital.name} className={`hospital-row ${selected.name === hospital.name ? "selected" : ""}`} onClick={() => onSelect(hospital)}><div className="rank-badge">{index + 1}</div><div className="hospital-icon"><Hospital size={20} /></div><div className="hospital-main"><div className="hospital-name"><b>{hospital.name}</b><span className="tag">{index === 0 ? "Recommended" : hospital.tag}</span></div><span className="muted">{hospital.speciality} · {hospital.capacity}% emergency capacity</span><div className="hospital-meta"><span className="rating"><Star size={14} fill="currentColor" /> {hospital.rating} ({hospital.reviews.toLocaleString()})</span><span>{formatDistance(metrics.distance)}</span><strong>{metrics.eta} min est.</strong></div><small className="ai-option-reason">{aiReasons.get(hospital.name) ?? `${formatDistance(metrics.distance)} · ${metrics.eta} min · ${hospital.rating.toFixed(1)}★`}</small></div><ChevronRight size={18} /></button>; })}</section><section className="panel route-panel"><PanelHeading title="Hospital details & route" action={selected.openNow ? "Open now" : "Closed"} /><MapView position={position} hospital={selected} /><div className="hospital-detail-head"><div className="hospital-icon large"><Hospital size={24} /></div><div className="hospital-detail-copy"><h3>{selected.name}</h3><span className="muted">{selected.address}</span><div className="hospital-call-header"><div><span className="hospital-call-label"><Phone size={15} /> Demo ER contact</span><strong>+91 90000 00000</strong></div><a className="call-hospital-button" href="tel:+919000000000"><Phone size={17} /> Call hospital</a></div></div></div><div className="hospital-detail-grid"><Data label="Distance" value={formatDistance(selectedMetrics.distance)} /><Data label="ETA" value={`${selectedMetrics.eta} min est.`} /><Data label="Rating" value={`${selected.rating} / 5`} /><Data label="Capacity" value={`${selected.capacity}%`} /></div><div className="route-confidence"><Route size={16} /><div><b>Route intelligence</b><span>Calculated from live GPS coordinates using a 28 km/h urban driving model. The estimate refreshes whenever the driver position changes.</span></div></div><div className="hospital-detail-copy"><b>{selected.emergencyLevel} · {selected.speciality}</b><span>{selected.beds}. Emergency intake is currently {selected.openNow ? "open" : "unavailable"}.</span><span><Phone size={14} /> {selected.phone}</span><span><b>Ambulance entrance:</b> {selected.erEntrance}</span></div><div className="route-option selected"><div><b>Recommended route</b><span>Fastest available corridor from live driver location</span></div><strong>{selectedMetrics.eta} min est.</strong></div><div className="route-option"><div><b>Alternative route</b><span>Ring Road fallback · longer distance</span></div><strong>{estimateEtaMinutes(selectedMetrics.distance, 1.18)} min est.</strong></div><button className="primary-button full" onClick={onStart}><Navigation size={17} /> Navigate to {selected.name}</button></section></div></>;
+  return <><div className="page-heading"><div><span className="eyebrow">LIVE ROUTE PLANNER</span><h2>Nearest suitable hospitals</h2><p className="muted">Recommendations recalculate from the driver’s current GPS position. Distance uses the live coordinate pair; ETA is a traffic-aware urban estimate and refreshes with GPS updates.</p></div><button className="primary-button" onClick={onStart}><Navigation size={17} /> Start navigation to selected</button></div><div className="hospital-layout"><section className="panel hospital-list"><PanelHeading title="Ranked recommendations" action={`${rankedHospitals.length} hospitals`} />{rankedHospitals.map((hospital, index) => { const metrics = hospitalRecommendation(hospital, position); return <button key={hospital.name} className={`hospital-row ${selected.name === hospital.name ? "selected" : ""}`} onClick={() => onSelect(hospital)}><div className="rank-badge">{index + 1}</div><div className="hospital-icon"><Hospital size={20} /></div><div className="hospital-main"><div className="hospital-name"><b>{hospital.name}</b><span className="tag">{index === 0 ? "Recommended" : hospital.tag}</span></div><span className="muted">{hospital.speciality} · {hospital.capacity}% emergency capacity</span><div className="hospital-meta"><span className="rating"><Star size={14} fill="currentColor" /> {hospital.rating} ({hospital.reviews.toLocaleString()})</span><span>{formatDistance(metrics.distance)}</span><strong>{metrics.eta} min est.</strong></div><small className="ai-option-reason">{aiReasons.get(hospital.name) ?? `${formatDistance(metrics.distance)} · ${metrics.eta} min · ${hospital.rating.toFixed(1)}★`}</small></div><ChevronRight size={18} /></button>; })}</section><section className="panel route-panel"><PanelHeading title="Hospital details & route" action={selected.openNow ? "Open now" : "Closed"} /><MapView position={position} hospital={selected} /><div className="hospital-detail-head"><div className="hospital-icon large"><Hospital size={24} /></div><div className="hospital-detail-copy"><h3>{selected.name}</h3><span className="muted">{selected.address}</span><div className="hospital-call-header"><div><span className="hospital-call-label"><Phone size={15} /> ER contact</span><strong>{selected.phone}</strong></div><a className="call-hospital-button" href={`tel:${selected.phone.replace(/\s/g, "")}`}><Phone size={17} /> Call hospital</a></div></div></div><div className="hospital-detail-grid"><Data label="Distance" value={formatDistance(selectedMetrics.distance)} /><Data label="ETA" value={`${selectedMetrics.eta} min est.`} /><Data label="Rating" value={`${selected.rating} / 5`} /><Data label="Capacity" value={`${selected.capacity}%`} /></div><div className="route-confidence"><Route size={16} /><div><b>Route intelligence</b><span>Calculated from live GPS coordinates using a 28 km/h urban driving model. The estimate refreshes whenever the driver position changes.</span></div></div><div className="hospital-detail-copy"><b>{selected.emergencyLevel} · {selected.speciality}</b><span>{selected.beds}. Emergency intake is currently {selected.openNow ? "open" : "unavailable"}.</span><span><Phone size={14} /> {selected.phone}</span><span><b>Ambulance entrance:</b> {selected.erEntrance}</span></div><div className="route-option selected"><div><b>Recommended route</b><span>Fastest available corridor from live driver location</span></div><strong>{selectedMetrics.eta} min est.</strong></div><div className="route-option"><div><b>Alternative route</b><span>Ring Road fallback · longer distance</span></div><strong>{estimateEtaMinutes(selectedMetrics.distance, 1.18)} min est.</strong></div><button className="primary-button full" onClick={onStart}><Navigation size={17} /> Navigate to {selected.name}</button></section></div></>;
 }
 
 function Payment({ hospital, status, onPay, onBack }: { hospital: HospitalOption; status: "pending" | "paid"; onPay: () => void; onBack: () => void }) { return <div className="payment-layout"><section className="panel payment-card"><div className="panel-icon teal"><CreditCard size={22} /></div><span className="eyebrow">TRIP AC-1048 · AUTOMATIC PAYMENT SESSION</span><h2>{status === "paid" ? "Payment completed" : "Collect trip payment"}</h2><p className="muted">Arrival at {hospital.name} was detected. Review the fare and close the trip.</p><div className="fare-total"><span>Total fare</span><strong>₹680</strong></div><div className="fare-lines"><Data label="Base trip" value="₹520" /><Data label="Emergency service" value="₹100" /><Data label="Platform fee" value="₹60" /><Data label="Method" value="UPI" /></div>{status === "pending" ? <button className="primary-button full" onClick={onPay}><Check size={17} /> Confirm payment received</button> : <div className="paid-banner"><Check size={18} /> Payment marked paid and trip closed.</div>}<button className="secondary-button full" onClick={onBack}>Back to active trip</button></section></div>; }
@@ -655,8 +686,8 @@ function RestPromptModal({ completedTrips, onRest, onContinue }: { completedTrip
   return <div className="modal-backdrop"><section className="rest-modal" role="dialog" aria-modal="true" aria-labelledby="rest-title"><div className="panel-icon teal"><Clock3 size={22} /></div><span className="eyebrow">CAPTAIN SAFETY CHECK</span><h2 id="rest-title">Do you want to take a rest?</h2><p className="muted">Payment is complete after {completedTrips} emergency {completedTrips === 1 ? "run" : "runs"}. Take a short safety break before accepting another high-stress request, or continue if you are fit to drive.</p><div className="rest-status"><ShieldCheck size={18} /><span>Choose Rest to go offline, or Continue to receive the next emergency request.</span></div><div className="modal-actions"><button className="secondary-button" onClick={onRest}>Take a safety rest</button><button className="primary-button" onClick={onContinue}>Continue driving <ArrowRight size={17} /></button></div></section></div>;
 }
 
-function BookingAlertModal({ onAccept, onDecline }: { onAccept: () => void; onDecline: () => void }) {
-  return <div className="modal-backdrop"><section className="booking-alert-modal" role="alertdialog" aria-modal="true" aria-labelledby="booking-alert-title"><div className="alert-pulse"><Bell size={22} /></div><span className="eyebrow">NEW EMERGENCY REQUEST · NOW</span><h2 id="booking-alert-title">Urgent chest-pain response</h2><p className="muted">A nearby patient needs immediate ambulance assistance. Verify the passenger by OTP before the live hospital route starts.</p><div className="alert-detail-grid"><Data label="Patient" value="Aarav Mehta · conscious" /><Data label="Pickup" value="2.1 km away" /><Data label="Priority" value="High · cardiac" tone="red" /></div><div className="modal-actions"><button className="secondary-button" onClick={onDecline}>Decline request</button><button className="primary-button" onClick={onAccept}>Accept & verify OTP <ArrowRight size={17} /></button></div></section></div>;
+function BookingAlertModal({ secondsLeft, onAccept, onDecline }: { secondsLeft: number; onAccept: () => void; onDecline: () => void }) {
+  return <div className="modal-backdrop"><section className="booking-alert-modal" role="alertdialog" aria-modal="true" aria-labelledby="booking-alert-title"><div className="alert-pulse"><Bell size={22} /></div><span className="eyebrow">NEW EMERGENCY REQUEST · NOW</span><h2 id="booking-alert-title">Urgent chest-pain response</h2><p className="muted">A nearby patient needs immediate ambulance assistance. Verify the passenger by OTP before the live hospital route starts.</p><div className="request-countdown" aria-live="assertive"><Clock3 size={18} /><strong>{secondsLeft}s</strong><span>to accept before dispatch returns this request</span></div><div className="alert-detail-grid"><Data label="Patient" value="Aarav Mehta · conscious" /><Data label="Pickup" value="2.1 km away" /><Data label="Priority" value="High · cardiac" tone="red" /></div><div className="modal-actions"><button className="secondary-button" onClick={onDecline}>Decline request</button><button className="primary-button" onClick={onAccept}>Accept & verify OTP <ArrowRight size={17} /></button></div></section></div>;
 }
 
 function ReadinessModal({ checklist, setChecklist, onConfirm, onClose }: { checklist: EquipmentChecklist; setChecklist: React.Dispatch<React.SetStateAction<EquipmentChecklist>>; onConfirm: () => void; onClose: () => void }) {

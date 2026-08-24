@@ -9,6 +9,12 @@ const allowedTransitions: Record<TripStatus, TripStatus[]> = {
   completed: [],
 };
 
+export const REQUEST_ACCEPTANCE_SECONDS = 5;
+
+export function requestExpired(secondsLeft: number) {
+  return secondsLeft <= 0;
+}
+
 export function isValidOtp(input: string, expected = "4826") {
   return input.trim() === expected;
 }
