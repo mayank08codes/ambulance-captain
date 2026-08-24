@@ -469,3 +469,19 @@
 - [x] On Rest, immediately return the next request to dispatch and set the captain Offline.
 - [x] Keep the bottom dispatch-transfer confirmation visible for 5 seconds, then dismiss it automatically.
 - [x] Validate the rest-to-offline workflow and confirmation timing.
+
+## Real hospital directory update
+
+- [x] Confirm the configured service area and current hospital data structure.
+- [x] Replace demo hospital names with real hospitals in that service area.
+- [x] Validate public hospital names, map coordinates, specialties, and contact details from reliable sources.
+- [x] Update map markers, ER-dock destination data, AI recommendations, and call actions with the validated records.
+- [x] Test the real-hospital workflow and document any unverified operational fields.
+
+## Delhi hospital directory confirmation
+
+- [x] Use Delhi, India as the confirmed service area for the real hospital directory.
+- [x] Replace the current New York-area coordinates and placeholder hospital records with verified Delhi data.
+
+- [x] Keep real Delhi hospital recommendations genuinely near the demo captain location, targeting approximately 3–4 km where the selected local set supports it.
+- [x] Validate displayed distances against the real coordinates instead of using impossible or distant values.
