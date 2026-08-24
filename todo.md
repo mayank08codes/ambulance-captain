@@ -462,3 +462,10 @@
 - [x] Increase the incoming request acceptance timer from 5 seconds to 10 seconds.
 - [x] Adjust the demo payment amount to remain between ₹150 and ₹200 across booking and payment surfaces.
 - [x] Validate the updated timer and payment workflow.
+
+## Rest prompt visibility and dispatch transfer refinement
+
+- [x] Make the post-payment rest prompt clearly readable with high-contrast text and controls.
+- [x] On Rest, immediately return the next request to dispatch and set the captain Offline.
+- [x] Keep the bottom dispatch-transfer confirmation visible for 5 seconds, then dismiss it automatically.
+- [x] Validate the rest-to-offline workflow and confirmation timing.

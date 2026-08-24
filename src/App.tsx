@@ -172,7 +172,7 @@ function App() {
 
   const notify = (message: string) => {
     setNotice(message);
-    window.setTimeout(() => setNotice(""), 2800);
+    window.setTimeout(() => setNotice(""), 5000);
   };
 
   const requestAiHospitalReview = async () => {
@@ -379,7 +379,9 @@ function App() {
     setTripStage("incoming");
     setPaymentStatus("pending");
     setBookingAlertOpen(false);
-    notify("Request transferred to dispatch. Another available ambulance can receive it while you take a safety rest.");
+    setRequestSecondsLeft(REQUEST_ACCEPTANCE_SECONDS);
+    setSection("dashboard");
+    notify("Request transferred to dispatch. You are now offline while another available ambulance receives it.");
   };
   const openHelp = () => notify("Support request opened. Dispatcher callback is available.");
   const checklistComplete = Object.values(equipmentChecklist).every(Boolean);
