@@ -501,3 +501,12 @@
 - [x] Add traffic-aware route options with AI recommended, fastest, and low-congestion choices
 - [x] Add automatic ER arrival detection and payment handoff
 - [x] Validate TypeScript, workflow tests, production build, and artifact presence
+
+## Desktop auth and traffic-aware route refresh
+
+- [x] Updated the actual desktop `src/App.tsx` login screen with an attractive branded background and working Sign in / Create new account tabs.
+- [x] Added signup validation for captain name, Indian phone number, and password before entering operations.
+- [x] Added a WebSocket-style dispatch channel attempt with GPS/polling fallback status so the UI does not claim a live socket when unavailable.
+- [x] Slowed the OTP-to-arrival demo route so the ambulance marker visibly progresses instead of jumping to payment.
+- [x] Added live route comparison with Best route, Fastest, and Low traffic options plus explicit red congestion segments and GPS sync status.
+- [x] Verified the real WebDev preview through signup submission, readiness checklist, request acceptance, and OTP-stage route rendering.

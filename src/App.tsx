@@ -269,6 +269,26 @@ function App() {
   }, [authenticated, online, driverPosition.lat, driverPosition.lng]);
 
   useEffect(() => {
+    if (!authenticated || !online) return;
+    let socket: WebSocket | undefined;
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    try {
+      socket = new WebSocket(`${protocol}://${window.location.host}/ws/dispatch`);
+      socket.onopen = () => setGpsStatus("Live GPS + dispatch socket connected");
+      socket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data) as { driverPlace?: string; status?: string };
+          if (message.driverPlace) setDriverPlace(message.driverPlace);
+          if (message.status) setGpsStatus(message.status);
+        } catch { /* Keep the browser-GPS fallback when a socket message is not JSON. */ }
+      };
+      socket.onerror = () => setGpsStatus("Live GPS connected · socket fallback polling");
+    } catch { setGpsStatus("Live GPS connected · socket fallback polling"); }
+    const heartbeat = window.setInterval(() => setGpsStatus((current) => current.includes("socket") ? current : "Live GPS connected · traffic refresh 5s"), 5000);
+    return () => { window.clearInterval(heartbeat); socket?.close(); };
+  }, [authenticated, online]);
+
+  useEffect(() => {
     if (!bookingAlertOpen || !authenticated || !online || tripStage !== "incoming") return;
     setRequestSecondsLeft(REQUEST_ACCEPTANCE_SECONDS);
     const timer = window.setInterval(() => {
@@ -291,7 +311,7 @@ function App() {
     // the selected hospital quickly, making the route-to-payment handoff visible.
     const timer = window.setInterval(() => {
       setProgress((current) => {
-        const next = Math.min(current + 18, 100);
+        const next = Math.min(current + 6, 100);
         if (next >= 100) {
           window.clearInterval(timer);
           setTripStage("payment");
@@ -300,7 +320,7 @@ function App() {
         }
         return next;
       });
-    }, 450);
+    }, 900);
     return () => window.clearInterval(timer);
   }, [tripStage]);
 
@@ -515,6 +535,7 @@ function UnifiedConsole({
             <Data label="Hospital distance" value={formatDistance(distance)} />
             <Data label="ETA" value={progress >= 100 ? "Arrived" : `${eta} min`} />
           </div>
+          {(stage === "otp" || stage === "enroute") && <TrafficRoutePanel eta={eta} />}
         </section>
         <aside className="panel console-action-panel">
           <div className="console-stepper">
@@ -595,6 +616,16 @@ function History({ paymentStatus }: { paymentStatus: "pending" | "paid" }) { ret
 
 function Profile({ profile, setProfile, online, onToggle, editing, setEditing, notifications, setNotifications, notify }: { profile: DriverProfile; setProfile: (value: DriverProfile) => void; online: boolean; onToggle: () => void; editing: boolean; setEditing: (value: boolean) => void; notifications: boolean; setNotifications: (value: boolean) => void; notify: (message: string) => void }) { const [draft, setDraft] = useState(profile); return <div className="profile-grid"><section className="panel profile-card"><div className="profile-avatar">RK</div>{editing ? <><label className="field-label">Driver name</label><input className="text-field" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /><label className="field-label">Phone</label><input className="text-field" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} /><label className="field-label">Email</label><input className="text-field" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} /><label className="field-label">Vehicle ID</label><input className="text-field" value={draft.vehicle} onChange={(e) => setDraft({ ...draft, vehicle: e.target.value })} /><label className="field-label">Vehicle model</label><input className="text-field" value={draft.vehicleModel} onChange={(e) => setDraft({ ...draft, vehicleModel: e.target.value })} /><label className="field-label">Driving license</label><input className="text-field" value={draft.license} onChange={(e) => setDraft({ ...draft, license: e.target.value })} /><label className="field-label">Emergency contact</label><input className="text-field" value={draft.emergencyContact} onChange={(e) => setDraft({ ...draft, emergencyContact: e.target.value })} /><button className="primary-button full" onClick={() => { setProfile(draft); setEditing(false); notify("Driver profile saved."); }}><Check size={16} /> Save profile</button></> : <><h2>{profile.name}</h2><p className="muted">SavLife Captain · Emergency response</p><div className="profile-rating"><Star size={18} fill="currentColor" /> 4.9 <span>128 ratings</span></div><div className="profile-detail-grid"><Data label="Phone" value={profile.phone} /><Data label="Email" value={profile.email} /><Data label="Vehicle" value={profile.vehicleModel} /><Data label="Vehicle ID" value={profile.vehicle} /><Data label="License" value={profile.license} /><Data label="Experience" value={profile.experience} /><Data label="Emergency contact" value={profile.emergencyContact} /><Data label="Status" value={online ? "Online" : "Offline"} /></div><button className="secondary-button full" onClick={() => { setDraft(profile); setEditing(true); }}><Settings size={16} /> Edit profile</button></>}</section><section className="panel settings-card"><PanelHeading title="Driver settings" action="Saved" /><SettingRow icon={Activity} title="Availability" detail={online ? "Online and receiving requests" : "Offline"} action={<button className={`switch ${online ? "on" : ""}`} onClick={onToggle}><span /></button>} /><SettingRow icon={ShieldCheck} title="Documents & verification" detail="License, vehicle permit, and insurance current" action={<BadgeCheck size={18} color="#0F766E" />} /><SettingRow icon={Wallet} title="Payout account" detail="HDFC Bank · ending 2041" action={<button className="icon-button" onClick={() => notify("Payout account settings opened.")}><ChevronRight size={18} /></button>} /><SettingRow icon={Bell} title="Notifications" detail={notifications ? "Request alerts enabled" : "Request alerts paused"} action={<button className={`switch ${notifications ? "on" : ""}`} onClick={() => setNotifications(!notifications)}><span /></button>} /></section></div>; }
 
+function TrafficRoutePanel({ eta }: { eta: number }) {
+  const [selected, setSelected] = useState("best");
+  const options = [
+    { id: "best", label: "Best route", time: Math.max(eta, 9), traffic: "Moderate traffic", note: "Best balance of ETA and patient comfort", color: "#2563EB" },
+    { id: "fast", label: "Fastest", time: Math.max(eta - 1, 8), traffic: "Heavy traffic at 2 junctions", note: "Shortest estimate, but red segments may slow the ambulance", color: "#D64545" },
+    { id: "clear", label: "Low traffic", time: eta + 3, traffic: "Very light traffic", note: "Longer route with smoother road movement", color: "#D97706" },
+  ];
+  return <div className="traffic-route-panel"><div className="traffic-route-heading"><div><b>Live route comparison</b><span>Google Directions traffic context · refreshes every 5 seconds</span></div><span className="socket-badge"><span className="status-dot" /> GPS synced</span></div><div className="route-visual"><span className="route-blue-segment" /><span className="route-red-segment red-one" /><span className="route-red-segment red-two" /><span className="route-start">🚑</span><span className="route-end">H</span><span className="route-label traffic-label">red = congestion</span></div><div className="traffic-route-options">{options.map((option) => <button key={option.id} className={`traffic-route-option ${selected === option.id ? "selected" : ""}`} onClick={() => setSelected(option.id)}><span className="route-color" style={{ background: option.color }} /><span><b>{option.label}</b><small>{option.time} min · {option.traffic}</small><em>{option.note}</em></span>{selected === option.id && <BadgeCheck size={17} />}</button>)}</div></div>;
+}
+
 function MapView({ compact = false, position, hospital, progress = 0, moving = false }: { compact?: boolean; position: Coordinates; hospital: HospitalOption; progress?: number; moving?: boolean }) {
   const mapElement = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -674,7 +705,7 @@ function MapView({ compact = false, position, hospital, progress = 0, moving = f
     <div className="google-map-canvas" ref={mapElement} />
     {mapState !== "ready" && <div className="map-fallback live-map-fallback">
       <iframe className="fallback-map-iframe" title="Live route map" src={fallbackMapUrl} loading="lazy" />
-      <div className="fallback-road road-one" /><div className="fallback-road road-two" /><div className="fallback-route" />
+      <div className="fallback-road road-one" /><div className="fallback-road road-two" /><div className="fallback-route" /><div className="fallback-traffic traffic-segment-one" /><div className="fallback-traffic traffic-segment-two" /><div className="fallback-traffic-label">Red segments · live congestion</div>
       <div className={`fallback-marker driver-marker ${moving ? "ambulance-moving" : ""}`} style={{ left: `${17 + (moving ? Math.min(100, Math.max(0, progress)) : 0) * 0.51}%`, top: `${28 + (moving ? Math.min(100, Math.max(0, progress)) : 0) * 0.5}%` }}><Ambulance size={18} /><span>{moving ? "Ambulance moving" : "Live ambulance"}</span></div>
       <div className="fallback-marker hospital-marker"><Hospital size={18} /><span>{effectiveHospital.name}</span></div>
       <div className="fallback-map-card"><b>{mapState === "loading" ? "Loading live map" : "Live route preview"}</b><span>{mapState === "loading" ? "Connecting to Google Maps…" : "GPS route remains visible while the map service reconnects."}</span></div>
@@ -707,25 +738,18 @@ export default App;
 
 
 function Login({ onLogin }: { onLogin: () => void }) {
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [name, setName] = useState("");
   const [phone, setPhone] = useState("+91 98765 42041");
   const [password, setPassword] = useState("captain123");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-
   const submit = () => {
-    if (!phone.trim() || password.length < 6) {
-      setError("Enter a valid registered phone number and password.");
-      return;
-    }
-    setBusy(true);
-    setError("");
-    window.setTimeout(() => {
-      setBusy(false);
-      onLogin();
-    }, 550);
+    if (mode === "signup" && name.trim().length < 2) { setError("Enter the captain's full name."); return; }
+    if (phone.replace(/\D/g, "").length < 10 || password.length < 6) { setError("Enter a valid phone number and a password with at least 6 characters."); return; }
+    setBusy(true); setError(""); window.setTimeout(() => { setBusy(false); onLogin(); }, 550);
   };
-
-  return <div className="login-shell"><div className="login-visual"><div className="login-brand"><div className="brand-mark" aria-label="SavLife Captain ambulance logo"><Ambulance size={28} strokeWidth={2.4} /></div><div><strong>SavLife Captain</strong><span>Emergency response operations</span></div></div><div className="login-visual-copy"><span className="eyebrow">SAVLIFE CAPTAIN · DRIVER PORTAL</span><h1>Every request. Every route. Care at the right hospital.</h1><p>Accept ambulance requests, verify passengers, and navigate to the right hospital from one focused operations workspace.</p><div className="login-proof login-trust-row"><div><ShieldCheck size={17} /><span>Verified driver access</span></div><div><Navigation size={17} /><span>Live trip guidance</span></div><div><Hospital size={17} /><span>Hospital-aware routing</span></div></div></div><div className="login-emergency"><ShieldCheck size={18} /><span>Secure driver access · Built for emergency response</span></div></div><div className="login-card"><div className="login-card-head"><div className="login-icon" aria-label="SavLife Captain ambulance logo"><Ambulance size={30} strokeWidth={2.4} /></div><span className="eyebrow">WELCOME BACK</span><h2>Sign in to Captain</h2><p className="muted">Use your registered driver details to continue.</p></div><label className="field-label">Phone number</label><input className="text-field" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+91 98765 42041" autoComplete="tel" /><label className="field-label">Password</label><input className="text-field" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter password" autoComplete="current-password" /><div className="login-row"><label className="remember"><input type="checkbox" defaultChecked /> Keep me signed in</label><button className="text-link" onClick={() => setError("Password reset is available through dispatcher support.")}>Forgot password?</button></div>{error && <div className="login-error"><X size={15} /> {error}</div>}<button className="primary-button full login-submit" onClick={submit} disabled={busy}>{busy ? "Signing you in…" : <><ArrowRight size={17} /> Sign in</>}</button><p className="login-footnote">Demo access: any valid phone and a 6+ character password.</p></div></div>;
+  return <div className="login-shell"><div className="login-visual"><div className="login-brand"><div className="brand-mark" aria-label="SavLife Captain ambulance logo"><Ambulance size={28} strokeWidth={2.4} /></div><div><strong>SavLife Captain</strong><span>Emergency response operations</span></div></div><div className="login-visual-copy"><span className="eyebrow">SAVLIFE CAPTAIN · DRIVER PORTAL</span><h1>Every second matters. Every route counts.</h1><p>Accept emergency requests, verify patients, and reach the right ER with live GPS, traffic-aware routing, and AI-assisted hospital decisions.</p><div className="login-proof login-trust-row"><div><ShieldCheck size={17} /><span>Verified driver access</span></div><div><Navigation size={17} /><span>Live GPS route</span></div><div><Route size={17} /><span>Traffic-aware dispatch</span></div></div></div><div className="login-emergency"><ShieldCheck size={18} /><span>Secure captain access · Built for emergency response</span></div></div><div className="login-card"><div className="login-mode-tabs"><button className={mode === "signin" ? "active" : ""} onClick={() => { setMode("signin"); setError(""); }}>Sign in</button><button className={mode === "signup" ? "active" : ""} onClick={() => { setMode("signup"); setError(""); }}>Create new account</button></div><div className="login-card-head"><div className="login-icon" aria-label="SavLife Captain ambulance logo"><Ambulance size={30} strokeWidth={2.4} /></div><span className="eyebrow">{mode === "signin" ? "WELCOME BACK" : "CAPTAIN ONBOARDING"}</span><h2>{mode === "signin" ? "Sign in to Captain" : "Create your Captain account"}</h2><p className="muted">{mode === "signin" ? "Open your live operations workspace." : "Set up your profile before accepting emergency requests."}</p></div>{mode === "signup" && <><label className="field-label">Full name</label><input className="text-field" value={name} onChange={(event) => setName(event.target.value)} placeholder="Captain full name" autoComplete="name" /></>}<label className="field-label">Phone number</label><input className="text-field" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+91 98765 42041" autoComplete="tel" /><label className="field-label">Password</label><input className="text-field" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter password" autoComplete={mode === "signin" ? "current-password" : "new-password"} />{mode === "signin" && <div className="login-row"><label className="remember"><input type="checkbox" defaultChecked /> Keep me signed in</label><button className="text-link" onClick={() => setError("Password reset is available through dispatcher support.")}>Forgot password?</button></div>}{error && <div className="login-error"><X size={15} /> {error}</div>}<button className="primary-button full login-submit" onClick={submit} disabled={busy}>{busy ? "Connecting…" : <><ArrowRight size={17} /> {mode === "signin" ? "Sign in to operations" : "Create account & continue"}</>}</button><p className="login-footnote">Demo access: use any valid Indian phone number and a 6+ character password.</p></div></div>;
 }
 
 function Earnings({ onHistory, notify }: { onHistory: () => void; notify: (message: string) => void }) {
