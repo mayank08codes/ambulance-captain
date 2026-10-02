@@ -491,3 +491,13 @@
 - [x] Move the demo ambulance and patient pickup coordinates close together in Delhi.
 - [x] Use distinct +91-format demo contact numbers for each hospital and label them demo/unverified.
 - [x] Validate the nearby ambulance-to-patient distance and contact display across recommendations and call actions.
+
+## Auth and traffic-aware navigation refresh
+
+- [x] Refresh the SavLife Captain login background with layered navy, cyan, violet, and route-line visual treatment
+- [x] Add a functional Create account signup mode with validation and dashboard handoff
+- [x] Add OTP-gated automatic navigation start using the existing hospital recommendation API with deterministic fallback
+- [x] Show selected route, live GPS sync status, ETA progress, and explicit red congestion segments
+- [x] Add traffic-aware route options with AI recommended, fastest, and low-congestion choices
+- [x] Add automatic ER arrival detection and payment handoff
+- [x] Validate TypeScript, workflow tests, production build, and artifact presence
